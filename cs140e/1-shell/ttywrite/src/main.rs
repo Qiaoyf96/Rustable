@@ -55,4 +55,36 @@ fn main() {
     let mut serial = serial::open(&opt.tty_path).expect("path points to invalid TTY");
 
     // FIXME: Implement the `ttywrite` utility.
+    use serial::SerialPort;
+    serial.reconfigure(&|settings| {
+        settings.set_baud_rate(opt.baud_rate)?;
+        settings.set_stop_bits(opt.stop_bits);
+        settings.set_flow_control(opt.flow_control);
+        settings.set_char_size(opt.char_width);
+        Ok(())
+    }).expect("configure serial error");
+    SerialPort::set_timeout(&mut serial, Duration::from_secs(opt.timeout))
+        .expect("timeout error");
+    let reader = match opt.input {
+        Some(f) => {
+            let mut reader = BufReader::new(File::open(f).expect("file not found"));
+            read_write(reader, &mut serial, opt.raw);
+        },
+        None => {
+            let mut reader = BufReader::new(io::stdin());
+            read_write(reader, &mut serial, opt.raw);
+        },
+    };
+}
+
+fn progress_fn(progress: Progress) {
+    println!("Progress: {:?}", progress);
+}
+
+use std::io::{self, BufReader, BufRead};
+fn read_write<T: BufRead>(mut reader: T, mut serial: &mut serial::SerialPort, raw: bool) -> io::Result<u64> {
+    match raw {
+        true => { io::copy(&mut reader, &mut serial) },
+        false => { Ok(Xmodem::transmit_with_progress(reader, &mut serial, progress_fn)? as u64) },
+    }
 }
