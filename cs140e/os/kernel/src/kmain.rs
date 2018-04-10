@@ -17,7 +17,14 @@ pub mod mutex;
 pub mod console;
 pub mod shell;
 
+use pi::timer::{spin_sleep_ms, current_time};
+
+
+
 #[no_mangle]
 pub extern "C" fn kmain() {
     // FIXME: Start the shell.
+    spin_sleep_ms(1000);
+    // console::kprint!("{}\n", begin);
+    shell::shell("Rainable: ");
 }
