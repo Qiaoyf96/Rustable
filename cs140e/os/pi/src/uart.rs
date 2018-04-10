@@ -24,6 +24,27 @@ enum LsrStatus {
 #[allow(non_snake_case)]
 struct Registers {
     // FIXME: Declare the "MU" registers from page 8.
+    IO: Volatile<u8>,
+    __r_io: [Reserved<u8>; 3],
+    IER: Volatile<u8>,
+    __r_ier: [Reserved<u8>; 3],
+    IIR: Volatile<u8>,
+    __r_iir: [Reserved<u8>; 3],
+    LCR: Volatile<u8>,
+    __r_lcr: [Reserved<u8>; 3],
+    MCR: Volatile<u8>,
+    __r_mcr: [Reserved<u8>; 3],
+    LSR: ReadVolatile<u8>,
+    __r_lsr: [Reserved<u8>; 3],
+    MSR: ReadVolatile<u8>,
+    __r_msr: [Reserved<u8>; 3],
+    SCRATCH: Volatile<u8>,
+    __r_scratch: [Reserved<u8>; 3],
+    CNTL: Volatile<u8>,
+    __r_cntl: [Reserved<u8>; 3],
+    STAT: ReadVolatile<u32>,
+    BAUD: Volatile<u16>,
+    __r_baud: Reserved<u16>,
 }
 
 /// The Raspberry Pi's "mini UART".
@@ -48,25 +69,34 @@ impl MiniUart {
         };
 
         // FIXME: Implement remaining mini UART initialization.
-        unimplemented!()
+        Gpio::new(14).into_alt(Function::Alt5);
+        Gpio::new(15).into_alt(Function::Alt5);
+        registers.BAUD.write(270);
+        registers.LCR.or_mask(0b11);
+        registers.CNTL.or_mask(0b11);
+        MiniUart {
+            registers,
+            timeout: None,
+        }
     }
 
     /// Set the read timeout to `milliseconds` milliseconds.
     pub fn set_read_timeout(&mut self, milliseconds: u32) {
-        unimplemented!()
+        self.timeout = Some(milliseconds);
     }
 
     /// Write the byte `byte`. This method blocks until there is space available
     /// in the output FIFO.
     pub fn write_byte(&mut self, byte: u8) {
-        unimplemented!()
+        while !self.registers.LSR.has_mask(LsrStatus::TxAvailable as u8) {}
+        self.registers.IO.write(byte);
     }
 
     /// Returns `true` if there is at least one byte ready to be read. If this
     /// method returns `true`, a subsequent call to `read_byte` is guaranteed to
     /// return immediately. This method does not block.
     pub fn has_byte(&self) -> bool {
-        unimplemented!()
+        self.registers.LSR.has_mask(LsrStatus::DataReady as u8)
     }
 
     /// Blocks until there is a byte ready to read. If a read timeout is set,
@@ -78,12 +108,24 @@ impl MiniUart {
     /// returns `Ok(())`, a subsequent call to `read_byte` is guaranteed to
     /// return immediately.
     pub fn wait_for_byte(&self) -> Result<(), ()> {
-        unimplemented!()
+        match self.timeout {
+            Some(timeout) => {
+                let current_time = timer::current_time();
+                while !self.has_byte() {
+                    if timer::current_time() > current_time + ((timeout as u64) * 1000) {
+                        return Err(())
+                    }
+                }
+            },
+            None => { while !self.has_byte() {} },
+        };
+        Ok(())
     }
 
     /// Reads a byte. Blocks indefinitely until a byte is ready to be read.
     pub fn read_byte(&mut self) -> u8 {
-        unimplemented!()
+        while !self.has_byte() {}
+        self.registers.IO.read()
     }
 }
 
