@@ -131,6 +131,15 @@ impl MiniUart {
 
 // FIXME: Implement `fmt::Write` for `MiniUart`. A b'\r' byte should be written
 // before writing any b'\n' byte.
+impl fmt::Write for MiniUart {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for b in s.bytes() {
+            if b == b'\n' { self.write_byte(b'\r'); }
+            self.write_byte(b);
+        }
+        Ok(())
+    }
+}
 
 #[cfg(feature = "std")]
 mod uart_io {
