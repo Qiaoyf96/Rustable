@@ -146,4 +146,31 @@ mod uart_io {
     //
     // The `io::Write::write()` method must write all of the requested bytes
     // before returning.
+    impl io::Write for MiniUart {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            for b in buf  {
+                self.write_byte(*b);
+            }
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            unimplemented!()
+        }
+    }
+
+    impl io::Read for MiniUart {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            match self.wait_for_byte() {
+                Ok(()) => {
+                    let mut index = 0 as usize;
+                    while index < buf.len() {
+                        buf[index] = self.read_byte();
+                        index += 1;
+                    }
+                    Ok(index)
+                },
+                Err(()) => { Err(io::Error::new(io::ErrorKind::TimedOut, "Reading uart timeout")) }
+            }
+        }
+    }
 }
