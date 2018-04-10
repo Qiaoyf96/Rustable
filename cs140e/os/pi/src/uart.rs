@@ -131,6 +131,15 @@ impl MiniUart {
 
 // FIXME: Implement `fmt::Write` for `MiniUart`. A b'\r' byte should be written
 // before writing any b'\n' byte.
+impl fmt::Write for MiniUart {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for b in s.bytes() {
+            if b == b'\n' { self.write_byte(b'\r'); }
+            self.write_byte(b);
+        }
+        Ok(())
+    }
+}
 
 #[cfg(feature = "std")]
 mod uart_io {
@@ -146,4 +155,31 @@ mod uart_io {
     //
     // The `io::Write::write()` method must write all of the requested bytes
     // before returning.
+    impl io::Write for MiniUart {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            for b in buf  {
+                self.write_byte(*b);
+            }
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> io::Result<()> {
+            unimplemented!()
+        }
+    }
+
+    impl io::Read for MiniUart {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            match self.wait_for_byte() {
+                Ok(()) => {
+                    let mut index = 0 as usize;
+                    while index < buf.len() {
+                        buf[index] = self.read_byte();
+                        index += 1;
+                    }
+                    Ok(index)
+                },
+                Err(()) => { Err(io::Error::new(io::ErrorKind::TimedOut, "Reading uart timeout")) }
+            }
+        }
+    }
 }
