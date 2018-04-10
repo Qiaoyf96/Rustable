@@ -1,6 +1,9 @@
 TARGET ?= aarch64-none-elf
 CROSS ?= $(TARGET)
 
+TTYWRITE ?= ttywrite
+PI_TTY ?= /dev/tty.SLAB_USBtoUART
+
 CC := $(CROSS)-gcc
 CCFLAGS ?= -Wall -O2 -nostdlib -nostartfiles -ffreestanding -pie -fpie
 # LDFLAGS ?= --gc-sections -static -pie -nostdlib -nostartfiles --no-dynamic-linker
@@ -72,3 +75,9 @@ $(KERNEL).bin: $(KERNEL).elf | $(BUILD_DIR)
 clean:
 	$(XARGO) clean
 	rm -rf $(BUILD_DIR)
+
+install: $(KERNEL).bin
+	$(TTYWRITE) -i $< $(PI_TTY)
+
+screen: install
+	screen $(PI_TTY) 115200
