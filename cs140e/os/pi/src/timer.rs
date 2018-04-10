@@ -44,13 +44,11 @@ pub fn current_time() -> u64 {
 /// Spins until `us` microseconds have passed.
 pub fn spin_sleep_us(us: u64) {
     let timer = Timer::new();
-    let start = timer.registers.CLO.read();
-    
-    timer.registers.COMPARE[1].write(start + (us as u32));
-    for _ in 0..(us >> 32 + 1) {
+    for _ in 0..us {
+        let lo = timer.registers.CLO.read();
+        timer.registers.COMPARE[1].write(lo + 1);
         while !timer.registers.CS.has_mask(0b10u32) {}
     }
-    
 }
 
 /// Spins until `ms` milliseconds have passed.
