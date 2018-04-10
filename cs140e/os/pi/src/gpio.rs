@@ -51,7 +51,7 @@ states! {
     Uninitialized, Input, Output, Alt
 }
 
-/// A GPIP pin in state `State`.
+/// A GPIO pin in state `State`.
 ///
 /// The `State` generic always corresponds to an uninstantiatable type that is
 /// use solely to mark and track the state of a given GPIO pin. A `Gpio`
@@ -102,7 +102,14 @@ impl Gpio<Uninitialized> {
     /// Enables the alternative function `function` for `self`. Consumes self
     /// and returns a `Gpio` structure in the `Alt` state.
     pub fn into_alt(self, function: Function) -> Gpio<Alt> {
-        unimplemented!()
+        let id = (self.pin / 10) as usize;
+        let offset = self.pin % 10 * 3;
+        self.registers.FSEL[id].or_mask((function as u32) << offset);
+        Gpio {
+            pin: self.pin,
+            registers: self.registers,
+            _state: PhantomData,
+        }
     }
 
     /// Sets this pin to be an _output_ pin. Consumes self and returns a `Gpio`
@@ -121,12 +128,16 @@ impl Gpio<Uninitialized> {
 impl Gpio<Output> {
     /// Sets (turns on) the pin.
     pub fn set(&mut self) {
-        unimplemented!()
+        let id = (self.pin / 32) as usize;
+        let offset = self.pin % 32;
+        self.registers.SET[id].write(1 << offset);
     }
 
     /// Clears (turns off) the pin.
     pub fn clear(&mut self) {
-        unimplemented!()
+        let id = (self.pin / 32) as usize;
+        let offset = self.pin % 32;
+        self.registers.CLR[id].write(1 << offset);
     }
 }
 
@@ -134,6 +145,8 @@ impl Gpio<Input> {
     /// Reads the pin's value. Returns `true` if the level is high and `false`
     /// if the level is low.
     pub fn level(&mut self) -> bool {
-        unimplemented!()
+        let id = (self.pin / 32) as usize;
+        let offset = self.pin % 32;
+        self.registers.LEV[id].has_mask(1 << offset)
     }
 }
