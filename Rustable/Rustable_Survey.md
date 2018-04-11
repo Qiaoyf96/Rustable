@@ -1,4 +1,4 @@
-# Rustable Survey 嘖嘖嘖
+# Rustable Survey
 
 Concentrate on the hardware(arm arch) interaction part of the os.
 
@@ -152,8 +152,6 @@ Memory allocators like libC’s `malloc()` are *global*: they can be called by a
 Thus, we need to **wrap our allocator in Mutex** ensuring that it is thread-safe by virtue of exclusion.
 
 #### Memory Map
-
-找出沒有被 kernel 占用的一塊連續空閒內存給 Bin Allocator 來進行內存分配，一旦內存用完就會報錯：Error::Exhausted
 
 This `memory_map` function is called by the `Allocator::initialize()` method which in-turn is called in `kmain()`. The `initialize()` method constructs an instance of the internal `imp::Allocator` structure for use in later allocations and deallocations.
 
