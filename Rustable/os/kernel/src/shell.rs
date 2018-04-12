@@ -89,6 +89,7 @@ pub fn shell(prefix: &str) -> ! {
             Ok(ref command) => {
                 match command.path() {
                     "echo" => echo(command),
+                    "exit" => exit(),
                     unknown => {
                         kprint!("unknown command: {}\n", unknown);
                     }
@@ -110,4 +111,9 @@ fn echo(command: &Command) {
         kprint!("{} ", arg);
     }
     kprint!("\n");
+}
+
+fn exit() {
+    kprintln!("You will exit to write a new kernel");
+    jump_to(BOOTLOADER_START_ADDR as *mut u8);
 }
