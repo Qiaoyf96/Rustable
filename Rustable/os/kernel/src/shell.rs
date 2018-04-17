@@ -1,6 +1,7 @@
 use stack_vec::StackVec;
 use console::{kprint, kprintln, CONSOLE};
 use std;
+use pi;
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
 enum Error {
@@ -89,6 +90,7 @@ pub fn shell(prefix: &str) -> ! {
             Ok(ref command) => {
                 match command.path() {
                     "echo" => echo(command),
+                    "atag" => print_atags(),
                     "exit" => exit(),
                     unknown => {
                         kprint!("unknown command: {}\n", unknown);
@@ -111,6 +113,12 @@ fn echo(command: &Command) {
         kprint!("{} ", arg);
     }
     kprint!("\n");
+}
+
+fn print_atags() {
+    for atag in pi::atags::Atags::get() {
+        kprintln!("{:#?}", atag);
+    }
 }
 
 fn jump_to(addr: *mut u8) -> ! {

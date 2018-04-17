@@ -20,7 +20,12 @@ impl Atag {
 
     /// Returns the ATAG following `self`, if there is one.
     pub fn next(&self) -> Option<&Atag> {
-        unimplemented!()
+        let curr_addr = (self as *const Atag as *const u32);
+        let next_addr = unsafe{ &*(curr_addr.add(self.dwords as usize) as *const Atag) };
+        if next_addr.tag == Atag::NONE {
+            return None;
+        }
+        Some(next_addr)
     }
 }
 
