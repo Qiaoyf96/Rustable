@@ -113,6 +113,15 @@ fn echo(command: &Command) {
     kprint!("\n");
 }
 
+fn jump_to(addr: *mut u8) -> ! {
+    unsafe {
+        asm!("br $0" : : "r"(addr as usize));
+        loop { asm!("nop" :::: "volatile")  }
+    }
+}
+
+const BOOTLOADER_START_ADDR: usize = 0x4000000;
+
 fn exit() {
     kprintln!("You will exit to write a new kernel");
     jump_to(BOOTLOADER_START_ADDR as *mut u8);
