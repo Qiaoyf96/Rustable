@@ -88,6 +88,50 @@ impl LinkedList {
         self.head = item;
     }
 
+    /// inserts the item into the list according to ascending order
+    pub unsafe fn insert_ascending( &mut self, mut item: * mut usize, block_size: usize ) {
+        
+        if self.head.is_null() {
+            //insert into empty list
+            *item = self.head as usize;
+            self.head = item;
+            return ()
+        } else {
+            //list is not empty
+
+            let mut prev = ptr::null_mut();
+
+            let mut current = self.head;
+
+            loop {
+                if current.is_null() {
+                    //end of list reached
+                    //insert into the last spot
+                    *item = current as usize;
+                    *prev = item as usize;
+                    break;
+                } else {
+                    if (item as usize) < (current as usize) {
+                        //insert item before current
+                        *item = current as usize;
+                        if prev.is_null() {
+                            self.head = item;
+                        } else {
+                            *prev = item as usize;
+                        }
+                        break;
+                    } else if (item as usize) > (current as usize) {
+                        //continue search
+                        prev = current;
+                        current = (*current) as * mut usize;  //get next item in list
+                    } else {
+                        panic!("unexpected address");
+                    }
+                }
+            }
+        }
+    }
+    
     /// Removes and returns the first item in the list, if any.
     pub fn pop(&mut self) -> Option<*mut usize> {
         let value = self.peek()?;
