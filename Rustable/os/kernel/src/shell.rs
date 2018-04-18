@@ -78,7 +78,7 @@ fn read_line<'a>(buf_vec: &'a mut StackVec<'a, u8>) -> &'a str {
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns: it is perpetually in a shell loop.
-pub fn shell(prefix: &str) -> ! {
+pub fn shell(prefix: &str) {
     loop {
         kprint!("{}", prefix);
         let mut buf_vec = [0u8; 512];
@@ -87,20 +87,18 @@ pub fn shell(prefix: &str) -> ! {
         let mut buf = [""; 64];
         match Command::parse(input_line, &mut buf) {
             Ok(ref command) => {
-                match command.path() {
+                let path = command.path();
+                match path {
                     "echo" => echo(command),
-                    "exit" => exit(),
-                    unknown => {
-                        kprint!("unknown command: {}\n", unknown);
-                    }
+                    "exit" => return,
+                    unknown => kprint!("unknown command: {}\n", unknown),
                 }
-            },
+            }
             Err(err) => {
                 match err {
                     Error::TooManyArgs => kprint!("error: too many arguments\n"),
                     _ => { },
                 }
-                
             }
         }
     }
@@ -112,6 +110,16 @@ fn echo(command: &Command) {
     }
     kprint!("\n");
 }
+
+/// Branches to the address `addr` unconditionally.
+fn jump_to(addr: *mut u8) -> ! {
+    unsafe {
+        asm!("br $0" : : "r"(addr as usize));
+        loop { asm!("nop" :::: "volatile")  }
+    }
+}
+
+const BOOTLOADER_START_ADDR: usize = 0x4000000;
 
 fn exit() {
     kprintln!("You will exit to write a new kernel");

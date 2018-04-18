@@ -13,11 +13,10 @@ lto = true
 debug = true
 
 [profile.test]
-panic = "abort"
-lto = true
 debug = true
 
 [profile.release]
+debug = true
 panic = "abort"
 lto = true
 
@@ -26,3 +25,4 @@ pi = { path = "../pi", features = ["std"] }
 
 # from assignment 1
 stack-vec = { path = "../../1-shell/stack-vec/" }
+
