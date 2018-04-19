@@ -1,6 +1,0 @@
-[package]
-name = "bootloader"
-version = "0.1.0"
-authors = ["rainatam <rainatam9784@gmail.com>"]
-
-[dependencies]

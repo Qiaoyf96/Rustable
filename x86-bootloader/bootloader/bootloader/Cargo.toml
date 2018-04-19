@@ -1,0 +1,10 @@
+[package]
+name = "bootmain"
+version = "0.1.0"
+authors = ["rainatam <rainatam9784@gmail.com>"]
+
+[dependencies]
+
+[lib]
+name = "bootmain"
+crate-type = ['staticlib']
