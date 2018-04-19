@@ -214,7 +214,7 @@ context_restore:
 .align 11
 _vectors:
     // FIXME: Setup the 16 exception vectors.
-    HANDLER(1, 1)
+    HANDLER(0, 0)
     HANDLER(0, 1)
     HANDLER(0, 2)
     HANDLER(0, 3)

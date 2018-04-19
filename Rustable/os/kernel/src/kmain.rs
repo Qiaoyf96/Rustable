@@ -35,13 +35,36 @@ pub mod vm;
 use process::GlobalScheduler;
 use pi::timer::{spin_sleep_ms, current_time};
 
+use process::sys_sleep;
+
 #[cfg(not(test))]
 use allocator::Allocator;
 
 #[cfg(not(test))]
 #[global_allocator]
 pub static ALLOCATOR: Allocator = Allocator::uninitialized();
-// pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
+pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
+
+pub extern "C" fn shell_thread() {
+    // unsafe { asm!("brk 1" :::: "volatile"); }
+    // shell::shell("$ ");
+    loop {
+        // sys_sleep(1000);
+
+        aarch64::nop();
+        // console::kprintln!("thread 1");
+        // shell::shell("$ ");
+    }
+}
+
+pub extern "C" fn shell_thread_2() {
+    loop {
+        sys_sleep(1000);
+        // aarch64::nop();
+        // console::kprintln!("thread 2");
+        // shell::shell("# ");
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn kmain() {
@@ -62,9 +85,10 @@ pub extern "C" fn kmain() {
        .@@@@    @@@@@   @@@@@@@  @@@@@@@  @@@@@@@@@    @@@@@@@  ;@@@@@@@ @@@@@@@ @@@@@@@@@.     @@@@@@@  @@@@@@@@@      
                  .#=                                                                                          "#;
     console::kprint!("{}\n", begin);
-    console::kprint!("{}\n", unsafe {aarch64::current_el()});
+    ALLOCATOR.initialize();
 
-    unsafe { asm!("brk 2" :::: "volatile"); }
+    // unsafe { asm!("brk 2" :::: "volatile"); }
+    SCHEDULER.start();
     
-    shell::shell("Rainable: ");
+    // shell::shell("Rainable: ");
 }

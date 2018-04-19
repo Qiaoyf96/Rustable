@@ -3,6 +3,15 @@ use std::collections::VecDeque;
 use mutex::Mutex;
 use process::{Process, State, Id};
 use traps::TrapFrame;
+use pi::interrupt::{Interrupt, Controller};
+use pi::timer::tick_in;
+
+use aarch64;
+
+use shell_thread;
+use shell_thread_2;
+
+use console;
 
 /// The `tick` time.
 // FIXME: When you're ready, change this to something more reasonable.
@@ -37,7 +46,31 @@ impl GlobalScheduler {
     /// using timer interrupt based preemptive scheduling. This method should
     /// not return under normal conditions.
     pub fn start(&self) {
-        unimplemented!("GlobalScheduler::start()")
+        *self.0.lock() = Some(Scheduler::new());
+        let mut process = Process::new().unwrap();
+        process.trap_frame.sp = process.stack.top().as_u64();
+        process.trap_frame.elr = shell_thread as *mut u8 as u64;
+        process.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
+        let tf = process.trap_frame.clone();
+        self.add(process);
+
+        let mut process2 = Process::new().unwrap();
+        process2.trap_frame.sp = process2.stack.top().as_u64();
+        process2.trap_frame.elr = shell_thread_2 as *mut u8 as u64;
+        // process2.trap_frame.spsr = 0b1101_00_0000; // To EL 0, currently only unmasking IRQ
+        self.add(process2);
+
+        Controller::new().enable(Interrupt::Timer1);
+        tick_in(TICK);
+        
+        unsafe {
+            asm!("mov sp, $0
+              bl context_restore
+              adr lr, _start
+              mov sp, lr
+              mov lr, xzr
+              eret" :: "r"(tf) :: "volatile");
+        };
     }
 }
 
@@ -51,7 +84,11 @@ struct Scheduler {
 impl Scheduler {
     /// Returns a new `Scheduler` with an empty queue.
     fn new() -> Scheduler {
-        unimplemented!("Scheduler::new()")
+        Scheduler {
+            processes: VecDeque::new(),
+            current: None,
+            last_id: None
+        }
     }
 
     /// Adds a process to the scheduler's queue and returns that process's ID if
@@ -63,7 +100,20 @@ impl Scheduler {
     /// It is the caller's responsibility to ensure that the first time `switch`
     /// is called, that process is executing on the CPU.
     fn add(&mut self, mut process: Process) -> Option<Id> {
-        unimplemented!("Scheduler::add()")
+        let id = match self.last_id {
+            Some(last_id) => last_id.checked_add(1)?,
+            None => 0
+        };
+
+        process.trap_frame.tpidr = id;
+        self.processes.push_back(process);
+
+        if let None = self.current {
+            self.current = Some(id);
+        }
+
+        self.last_id = Some(id);
+        self.last_id
     }
 
     /// Sets the current process's state to `new_state`, finds the next process
@@ -75,6 +125,30 @@ impl Scheduler {
     /// This method blocks until there is a process to switch to, conserving
     /// energy as much as possible in the interim.
     fn switch(&mut self, new_state: State, tf: &mut TrapFrame) -> Option<Id> {
-        unimplemented!("Scheduler::switch()")
+        let mut current = self.processes.pop_front()?;
+        let current_id = current.get_id();
+        current.trap_frame = Box::new(*tf);
+        current.state = new_state;
+        self.processes.push_back(current);
+
+        loop {
+            let mut process = self.processes.pop_front()?;
+            if process.is_ready() {
+                self.current = Some(process.get_id() as Id);
+                *tf = *process.trap_frame;
+                process.state = State::Running;
+
+                // Push process back into queue.
+                self.processes.push_front(process);
+                break;
+            } else if process.get_id() == current_id {
+                // We cycled the list, wait for an interrupt.
+                aarch64::wfi();
+            }
+
+            self.processes.push_back(process);
+        }
+
+        self.current
     }
 }

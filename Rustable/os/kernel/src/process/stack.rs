@@ -31,7 +31,6 @@ impl Stack {
             raw_ptr.write_bytes(0, Self::SIZE);
             raw_ptr
         };
-
         let ptr = Unique::new(raw_ptr as *mut _).expect("non-null");
         Some(Stack { ptr })
     }

@@ -34,6 +34,13 @@ impl Timer {
         let hi = self.registers.CHI.read();
         (hi << 32 + lo) as u64
     }
+
+    pub fn tick_in(&mut self, us: u32) {
+        let current_low = self.registers.CLO.read();
+        let compare = current_low.wrapping_add(us);
+        self.registers.COMPARE[1].write(compare); // timer 1
+        self.registers.CS.or_mask(0b0010); // clear timer 1 interrupt
+    }
 }
 
 /// Returns the current time in microseconds.
@@ -54,4 +61,9 @@ pub fn spin_sleep_us(us: u64) {
 /// Spins until `ms` milliseconds have passed.
 pub fn spin_sleep_ms(ms: u64) {
     spin_sleep_us(ms * 1000);
+}
+
+pub fn tick_in(us: u32) {
+    let mut timer = Timer::new();
+    timer.tick_in(us);
 }

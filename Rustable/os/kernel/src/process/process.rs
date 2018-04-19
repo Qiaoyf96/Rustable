@@ -1,6 +1,9 @@
 use traps::TrapFrame;
 use process::{State, Stack};
 
+use console;
+use std::mem;
+
 /// Type alias for the type of a process ID.
 pub type Id = u64;
 
@@ -22,7 +25,18 @@ impl Process {
     /// If enough memory could not be allocated to start the process, returns
     /// `None`. Otherwise returns `Some` of the new `Process`.
     pub fn new() -> Option<Process> {
-        unimplemented!("Process::new()")
+        match Stack::new() {
+            Some(stack) => Some(Process {
+                trap_frame: Box::new(TrapFrame::default()),
+                stack,
+                state: State::Ready,
+            }),
+            None => None,
+        }
+    }
+
+    pub fn get_id(&self) -> u64 {
+        self.trap_frame.tpidr
     }
 
     /// Returns `true` if this process is ready to be scheduled.
@@ -40,6 +54,25 @@ impl Process {
     ///
     /// Returns `false` in all other cases.
     pub fn is_ready(&mut self) -> bool {
-        unimplemented!("Process::is_ready()")
+        match self.state {
+            State::Waiting(_) => {
+                // Use mem::replace to remove the value and work around the
+                // borrow checker.
+                let mut state = mem::replace(&mut self.state, State::Ready);
+                let ready = if let State::Waiting(ref mut is_ready) = state {
+                    is_ready(self)
+                } else {
+                    panic!("Invalid path");
+                };
+
+                if !ready {
+                    self.state = state;
+                }
+
+                ready
+            },
+            State::Running => false,
+            State::Ready => true
+        }
     }
 }

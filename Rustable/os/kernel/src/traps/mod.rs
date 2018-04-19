@@ -46,18 +46,29 @@ pub struct Info {
 #[no_mangle]
 pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     kprintln!("{:?} {:?} {}", info.source, info.kind, esr);
-    match Syndrome::from(esr) {
-        Syndrome::Brk(i) => {
-            shell::shell(" [brk]$ ");
-            tf.elr += 4;
-        },
-        Syndrome::Svc(syscall) => {
-            handle_syscall(syscall, tf);
-            return;
+    if info.kind == Kind::Synchronous {
+        match Syndrome::from(esr) {
+            Syndrome::Brk(i) => {
+                shell::shell(" [brk]$ ");
+                tf.elr += 4;
+            },
+            Syndrome::Svc(syscall) => {
+                handle_syscall(syscall, tf);
+                return;
+            }
+            _ => {}
         }
-        _ => {}
+    } else if info.kind == Kind::Irq {
+        let controller = Controller::new();
+        use self::Interrupt::*;
+        for interrupt in [Timer1, Timer3, Usb, Gpio0, Gpio1, Gpio2, Gpio3, Uart].iter() {
+            if controller.is_pending(*interrupt) {
+                handle_irq(*interrupt, tf);
+                return;
+            }
+        }
     }
-    // loop {
-    //     unsafe { asm!("wfe") }
-    // }
+    loop {
+        unsafe { asm!("wfe") }
+    }
 }

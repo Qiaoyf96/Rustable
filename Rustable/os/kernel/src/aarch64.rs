@@ -51,3 +51,9 @@ pub fn nop() {
         asm!("nop" :::: "volatile");
     }
 }
+
+pub fn wfi() {
+    unsafe {
+        asm!("wfi" :::: "volatile");
+    }
+}
