@@ -11,21 +11,21 @@ use vfat::{Metadata, Attributes, Timestamp, Time, Date};
 #[derive(Debug)]
 pub struct Dir {
     // FIXME: Fill me in.
-    pub first_cluster: Cluster,
-    pub vfat: Shared<VFat>,
-    pub meta: Metadata,
-    pub short_file_name: String,
-    pub lfn: String,
+    // pub first_cluster: Cluster,
+    // pub vfat: Shared<VFat>,
+    // pub meta: Metadata,
+    // pub short_file_name: String,
+    // pub lfn: String,
 }
 
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatRegularDirEntry {
     // FIXME: Fill me in.
-    file_name: [ u8; 8 ],
-    file_extension: [ u8; 3 ],
-    pub meta: Metadata,
-    size_file: u32,
+    // file_name: [ u8; 8 ],
+    // file_extension: [ u8; 3 ],
+    // pub meta: Metadata,
+    // size_file: u32,
 }
 
 #[repr(C, packed)]

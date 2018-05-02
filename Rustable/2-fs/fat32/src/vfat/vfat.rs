@@ -34,29 +34,26 @@ impl VFat {
                     //     Ok( bpb ) => { bpb },
                     //     Err( e ) => { return Err( e )}
                     // };
-                    let bpb = BiosParameterBlock::from(&mut device, mbr.partition_table[i].relative_sector as u64)?;
+                    let ebpb = BiosParameterBlock::from(&mut device, mbr.partition_table[i].relative_sector as u64)?;
 
-                    if bpb.num_bytes_per_sector == 0 {
-                        return Err( Error::Io( io::Error::new( io::ErrorKind::Other, "logic sector size invalid" ) ) )
-                    }
-                    // num_sectors_per_fat = 0 for FAT32
-                    let sectors_per_fat = if bpb.num_sectors_per_fat == 0 {
-                        bpb.sectors_per_fat as u32
-                    } else {
-                        bpb.num_sectors_per_fat as u32
-                    };
+                    // if bpb.num_bytes_per_sector == 0 {
+                    //     return Err( Error::Io( io::Error::new( io::ErrorKind::Other, "logic sector size invalid" ) ) )
+                    // }
 
-                    let partition = Partition { start: mbr.partition_table[i].relative_sector as u64,
-                                                sector_size: bpb.num_bytes_per_sector as u64};
+                    let partition_start = mbr.partition_table[i].relative_sector as u64;
+                    let bytes_per_sector = ebpb.bytes_per_sector();
+
+                    let cache = CachedDevice::new(device, Partition { start: partition_start,
+                                                                      sector_size: bytes_per_sector as u64 });
 
                     let vfat = VFat {
-                        device: CachedDevice::new(device, partition),
-                        bytes_per_sector: bpb.num_bytes_per_sector,
-                        sectors_per_cluster: bpb.num_sectors_per_cluster,
-                        sectors_per_fat: sectors_per_fat,
-                        fat_start_sector: mbr.partition_table[i].relative_sector as u64 + bpb.num_reserved_sectors as u64,
-                        data_start_sector: mbr.partition_table[i].relative_sector as u64 + bpb.num_reserved_sectors as u64 + sectors_per_fat as u64 * bpb.num_file_allocation_tables as u64,
-                        root_dir_cluster: Cluster::from(bpb.cluster_num_root_dir)
+                        device: cache,
+                        bytes_per_sector,
+                        sectors_per_cluster: ebpb.sectors_per_cluster(),
+                        sectors_per_fat: ebpb.sectors_per_fat(),
+                        fat_start_sector: partition_start + ebpb.fat_start_sector(),
+                        data_start_sector: partition_start + ebpb.data_start_sector(),
+                        root_dir_cluster: Cluster::from(ebpb.root_cluster()),
                     };
                     return Ok( Shared::new( vfat ) )
 
@@ -77,11 +74,35 @@ impl VFat {
         offset: usize,
         buf: &mut [u8]
     ) -> io::Result<usize> {
+        // let cluster_start_sector = self.data_start_sector
+        //                            + cluster.data_index() as u64 * self.sectors_per_cluster as u64;
+        // let mut bytes_read: usize = 0;
+        // loop {
+        //     let sector_index = (offset + bytes_read) as u64 / self.bytes_per_sector as u64;
+
+        //     if sector_index >= self.sectors_per_cluster as u64 {
+        //         break;
+        //     } else {
+        //         let byte_offset = (offset + bytes_read) as usize
+        //                            - sector_index as usize * self.bytes_per_sector as usize;
+        //         let data = self.device.get(cluster_start_sector + sector_index)?;
+        //         assert!(byte_offset < data.len());
+
+        //         let bytes = buf.write(&data[byte_offset..])?;
+        //         bytes_read += bytes;
+
+        //         if buf.is_empty() {
+        //             break;
+        //         }
+        //     }
+        // }
+
+        // Ok(bytes_read)
         let sector_size = self.device.sector_size() as usize;
         let len_bytes_cluster = sector_size * self.sectors_per_cluster as usize;
         
         let mut sector = self.data_start_sector as usize +
-            (cluster.cluster_num() as usize - 2usize ) * self.sectors_per_cluster as usize + //data clusters starts at 2
+            cluster.data_index() * self.sectors_per_cluster as usize + //data clusters starts at 2
             offset as usize / self.bytes_per_sector as usize;
 
         //amount of data to read
@@ -153,7 +174,7 @@ impl VFat {
             // println!("read chain loop");
             
             if let Some(x) = cycle_detect {
-                if current.cluster_num() == x.cluster_num() {
+                if current.fat_index() == x.fat_index() {
                     return Err( io::Error::new( io::ErrorKind::InvalidData,
                                                 "FAT cluster chain has a cycle" ) )
                 }
@@ -208,10 +229,9 @@ impl VFat {
         use std::slice;
         
         const s : usize = mem::size_of::<FatEntry>();
-        let origin = self.fat_start_sector;
-        let sector_whole = cluster.cluster_num() * s / self.bytes_per_sector as usize;
-        let bytes_remainder = cluster.cluster_num() * s % self.bytes_per_sector as usize;
-        let sector_offset = origin + sector_whole as u64;
+        let sector_whole = cluster.fat_index() * s / self.bytes_per_sector as usize;
+        let bytes_remainder = cluster.fat_index() * s % self.bytes_per_sector as usize;
+        let sector_offset = self.fat_start_sector + sector_whole as u64;
         let cached_sector_slice : &[u8] = self.device.get( sector_offset )?;
         let fat_entry = unsafe { slice::from_raw_parts( & cached_sector_slice[bytes_remainder] as * const u8 as * const FatEntry, 1 ) };
         

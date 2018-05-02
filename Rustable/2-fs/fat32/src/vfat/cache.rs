@@ -96,13 +96,13 @@ impl CachedDevice {
     pub fn get(&mut self, sector: u64) -> io::Result<&[u8]> {
         if !self.cache.contains_key(&sector) {
             let (physical_sector, factor) = self.virtual_to_physical(sector);
-            let mut buf = vec![0u8; self.partition.sector_size as usize];
-            let device_sector_size = self.device.sector_size();
+            let mut data = Vec::new();
+
             for i in 0..factor {
-                self.device.read_sector(physical_sector+i, &mut buf[(i*device_sector_size) as usize..]);
+                self.device.read_all_sector(physical_sector + i, &mut data)?;
             }
-            let cache_entry = CacheEntry{data: buf, dirty: false};
-            self.cache.insert(sector, cache_entry);
+
+            self.cache.insert(sector, CacheEntry { data, dirty: false });
         } 
         let cache_entry = self.cache.get(&sector).unwrap();
         Ok(cache_entry.data.as_slice())
