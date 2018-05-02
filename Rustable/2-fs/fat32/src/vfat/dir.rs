@@ -4,42 +4,46 @@ use std::borrow::Cow;
 use std::io;
 
 use traits;
-use util::VecExt;
+use util::{VecExt, Unused};
 use vfat::{VFat, Shared, File, Cluster, Entry};
 use vfat::{Metadata, Attributes, Timestamp, Time, Date};
 
 #[derive(Debug)]
 pub struct Dir {
     // FIXME: Fill me in.
-    // pub first_cluster: Cluster,
-    // pub vfat: Shared<VFat>,
-    // pub meta: Metadata,
-    // pub short_file_name: String,
-    // pub lfn: String,
+    start: Cluster,
+    vfat: Shared<VFat> 
 }
 
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatRegularDirEntry {
     // FIXME: Fill me in.
-    // file_name: [ u8; 8 ],
-    // file_extension: [ u8; 3 ],
-    // pub meta: Metadata,
-    // size_file: u32,
+    filename: [u8; 8],
+    extension: [u8; 3],
+    attributes: Attributes,
+    reserved: Unused<u8>,
+    creation_time_subsecond: Unused<u8>,
+    created: Timestamp,
+    accessed: Date,
+    cluster_high: u16,
+    modified: Timestamp,
+    cluster_low: u16,
+    file_size: u32
 }
 
 #[repr(C, packed)]
 #[derive(Copy, Clone)]
 pub struct VFatLfnDirEntry {
     // FIXME: Fill me in.
-    // sequence_num: u8,
-    // name_chars_0: [ u8; 10 ],
-    // attrib: Attributes,
-    // entry_type: u8,
-    // checksum_dos_file_name: u8,
-    // name_chars_1: [ u8; 12 ],
-    // signature: u16,
-    // name_chars_2: [ u8; 4 ],
+    sequence_number: u8,
+    name_1: [u16; 5],
+    attributes: u8,
+    unused_1: Unused<u8>,
+    checksum: u8,
+    name_2: [u16; 6],
+    unused_2: Unused<u16>,
+    name_3: [u16; 2],
 }
 
 #[repr(C, packed)]
