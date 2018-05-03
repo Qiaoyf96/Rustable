@@ -54,25 +54,22 @@ impl Process {
     ///
     /// Returns `false` in all other cases.
     pub fn is_ready(&mut self) -> bool {
-        match self.state {
-            State::Waiting(_) => {
-                // Use mem::replace to remove the value and work around the
-                // borrow checker.
-                let mut state = mem::replace(&mut self.state, State::Ready);
-                let ready = if let State::Waiting(ref mut is_ready) = state {
-                    is_ready(self)
+        if let State::Ready = self.state {
+            true
+        } else if let State::Running = self.state {
+            false
+        } else {
+            let state = mem::replace(&mut self.state, State::Ready);
+            if let State::Waiting(mut event_poll_fn) = state {
+                if event_poll_fn(self) {
+                    true
                 } else {
-                    panic!("Invalid path");
-                };
-
-                if !ready {
-                    self.state = state;
+                    self.state = State::Waiting(event_poll_fn);
+                    false
                 }
-
-                ready
-            },
-            State::Running => false,
-            State::Ready => true
+            } else {
+                unreachable!();
+            }
         }
     }
 }

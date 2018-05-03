@@ -30,9 +30,8 @@ impl Timer {
     /// Reads the system timer's counter and returns the 64-bit counter value.
     /// The returned value is the number of elapsed microseconds.
     pub fn read(&self) -> u64 {
-        let lo = self.registers.CLO.read();
-        let hi = self.registers.CHI.read();
-        (hi << 32 + lo) as u64
+        return (self.registers.CHI.read() as u64) << 32
+                | (self.registers.CLO.read() as u64);
     }
 
     pub fn tick_in(&mut self, us: u32) {

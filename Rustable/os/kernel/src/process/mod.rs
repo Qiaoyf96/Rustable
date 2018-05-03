@@ -7,6 +7,7 @@ pub use self::process::{Process, Id};
 pub use self::state::State;
 pub use self::scheduler::{GlobalScheduler, TICK};
 pub use self::stack::Stack;
+use console::kprintln;
 
 pub fn sys_sleep(ms: u32) -> u32 {
     let error: u64;
@@ -20,6 +21,7 @@ pub fn sys_sleep(ms: u32) -> u32 {
               : "r"(ms)
               : "x0", "x7")
     }
+    kprintln!("Slept for {} msec", result);
 
     assert_eq!(error, 0);
     result
