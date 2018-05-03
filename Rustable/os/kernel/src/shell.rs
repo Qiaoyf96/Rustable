@@ -1,6 +1,11 @@
 use stack_vec::StackVec;
 use console::{kprint, kprintln, CONSOLE};
 use std;
+use std::path::{Path, PathBuf};
+use pi;
+use FILE_SYSTEM;
+use fat32::traits::{Dir, Entry, FileSystem, Timestamp, Metadata};
+
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
 enum Error {
@@ -78,7 +83,9 @@ fn read_line<'a>(buf_vec: &'a mut StackVec<'a, u8>) -> &'a str {
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns: it is perpetually in a shell loop.
-pub fn shell(prefix: &str) {
+pub fn shell(prefix: &str) -> ! {
+    let mut working_dir = PathBuf::from("/");
+
     loop {
         kprint!("{}", prefix);
         let mut buf_vec = [0u8; 512];
@@ -87,11 +94,17 @@ pub fn shell(prefix: &str) {
         let mut buf = [""; 64];
         match Command::parse(input_line, &mut buf) {
             Ok(ref command) => {
-                let path = command.path();
-                match path {
-                    "echo" => echo(command),
-                    "exit" => return,
-                    unknown => kprint!("unknown command: {}\n", unknown),
+                match command.path() {
+                    "echo" => echo(&command.args[1..]),
+                    "atag" => print_atags(),
+                    "pwd" => handle_pwd(&command.args[1..], &mut working_dir),
+                    "cd" => handle_cd(&command.args[1..], &mut working_dir),
+                    "ls" => handle_ls(&command.args[1..], &mut working_dir),
+                    "cat" => handle_cat(&command.args[1..], &mut working_dir),
+                    "exit" => exit(),
+                    unknown => {
+                        kprint!("unknown command: {}\n", unknown);
+                    }
                 }
             }
             Err(err) => {
@@ -104,18 +117,172 @@ pub fn shell(prefix: &str) {
     }
 }
 
-fn echo(command: &Command) {
-    for arg in command.args[1..].iter() {
+fn echo(args: &[&str]) {
+    for arg in args.iter() {
         kprint!("{} ", arg);
     }
     kprint!("\n");
 }
 
-/// Branches to the address `addr` unconditionally.
+fn print_atags() {
+    for atag in pi::atags::Atags::get() {
+        kprintln!("{:#?}", atag);
+    }
+}
+
 fn jump_to(addr: *mut u8) -> ! {
     unsafe {
         asm!("br $0" : : "r"(addr as usize));
         loop { asm!("nop" :::: "volatile")  }
+    }
+}
+
+fn handle_pwd(args: &[&str], working_dir: &PathBuf) {
+    if args.len() > 0 {
+        kprintln!("Too many args. Usage:");
+        kprintln!("pwd");
+        kprintln!();
+        return;
+    }
+
+    kprintln!("{}", working_dir.as_path().display());
+}
+
+fn handle_cd(args: &[&str], working_dir: &mut PathBuf) {
+    if args.len() != 1 {
+        kprintln!("Usage:");
+        kprintln!("cd <directory>");
+        kprintln!();
+        return;
+    }
+
+    if args[0] == "." {
+        // No-op.
+    } else if args[0] == ".." {
+        working_dir.pop();
+    } else {
+        let path = Path::new(args[0]);
+
+        let mut new_dir = working_dir.clone();
+        new_dir.push(path);
+
+        let entry = FILE_SYSTEM.open(new_dir.as_path());
+        if entry.is_err() {
+            kprintln!("Path not found.");
+            return;
+        }
+
+        if entry.unwrap().as_dir().is_some() {
+            working_dir.push(path);
+        } else {
+            kprintln!("Not a directory.");
+        }
+    }
+}
+
+fn print_entry<E: Entry>(entry: &E) {
+    fn write_bool(b: bool, c: char) {
+        if b { kprint!("{}", c); } else { kprint!("-"); }
+    }
+
+    fn write_timestamp<T: Timestamp>(ts: T) {
+        kprint!("{:02}/{:02}/{} {:02}:{:02}:{:02} ",
+               ts.month(), ts.day(), ts.year(), ts.hour(), ts.minute(), ts.second());
+    }
+
+    write_bool(entry.is_dir(), 'd');
+    write_bool(entry.is_file(), 'f');
+    write_bool(entry.metadata().read_only(), 'r');
+    write_bool(entry.metadata().hidden(), 'h');
+    kprint!("\t");
+
+    write_timestamp(entry.metadata().created());
+    write_timestamp(entry.metadata().modified());
+    write_timestamp(entry.metadata().accessed());
+    kprint!("\t");
+
+    kprintln!("{}", entry.name());
+}
+
+fn handle_ls(mut args: &[&str], working_dir: &PathBuf) {
+    let show_hidden = args.len() > 0 && args[0] == "-a";
+    if show_hidden {
+        args = &args[1..];
+    }
+
+    if args.len() > 1 {
+        kprintln!("Usage:");
+        kprintln!("ls [-a] [directory]");
+        kprintln!();
+        return;
+    }
+
+    let mut dir = working_dir.clone();
+    if !args.is_empty() {
+        if args[0] == "." {
+            // No-op.
+        } else if args[0] == ".." {
+            dir.pop();
+        } else {
+            dir.push(args[0]);
+        }
+    }
+    let entry_result = FILE_SYSTEM.open(dir.as_path());
+    if entry_result.is_err() {
+        kprintln!("Path not found.");
+        return;
+    }
+    let entry = entry_result.unwrap();
+
+    if let Some(dir_entry) = entry.into_dir() {
+        let mut entries = dir_entry.entries().expect("List dir");
+        for item in entries {
+            if show_hidden || !item.metadata().hidden() {
+                print_entry(&item);
+            }
+        }
+    } else {
+        kprintln!("Not a directory.");
+    }
+}
+
+fn handle_cat(args: &[&str], working_dir: &PathBuf) {
+    kprintln!("cat");
+    if args.len() != 1 {
+        kprintln!("Usage:");
+        kprintln!("cat <file>");
+        kprintln!();
+        return;
+    }
+
+    kprintln!("cat");
+    let mut dir = working_dir.clone();
+    dir.push(args[0]);
+
+    kprintln!("cat");
+    let entry_result = FILE_SYSTEM.open(dir.as_path());
+    if entry_result.is_err() {
+        kprintln!("Path not found.");
+        return;
+    }
+
+    kprintln!("cat");
+    let entry = entry_result.unwrap();
+    if let Some(ref mut file) = entry.into_file() {
+        loop {
+            use std::io::Read;
+
+            let mut buffer = [0u8; 512];
+            match file.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(_) => kprint!("{}", String::from_utf8_lossy(&buffer)),
+                Err(e) => kprint!("Failed to read file: {:?}", e)
+            }
+        }
+
+        kprintln!("");
+    } else {
+        kprintln!("Not a file.");
     }
 }
 
@@ -125,3 +292,4 @@ fn exit() {
     kprintln!("You will exit to write a new kernel");
     jump_to(BOOTLOADER_START_ADDR as *mut u8);
 }
+

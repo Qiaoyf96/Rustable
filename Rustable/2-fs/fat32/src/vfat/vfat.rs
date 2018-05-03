@@ -34,29 +34,26 @@ impl VFat {
                     //     Ok( bpb ) => { bpb },
                     //     Err( e ) => { return Err( e )}
                     // };
-                    let bpb = BiosParameterBlock::from(&mut device, mbr.partition_table[i].relative_sector as u64)?;
+                    let ebpb = BiosParameterBlock::from(&mut device, mbr.partition_table[i].relative_sector as u64)?;
 
-                    if bpb.num_bytes_per_sector == 0 {
-                        return Err( Error::Io( io::Error::new( io::ErrorKind::Other, "logic sector size invalid" ) ) )
-                    }
-                    // num_sectors_per_fat = 0 for FAT32
-                    let sectors_per_fat = if bpb.num_sectors_per_fat == 0 {
-                        bpb.sectors_per_fat as u32
-                    } else {
-                        bpb.num_sectors_per_fat as u32
-                    };
+                    // if bpb.num_bytes_per_sector == 0 {
+                    //     return Err( Error::Io( io::Error::new( io::ErrorKind::Other, "logic sector size invalid" ) ) )
+                    // }
 
-                    let partition = Partition { start: mbr.partition_table[i].relative_sector as u64,
-                                                sector_size: bpb.num_bytes_per_sector as u64};
+                    let partition_start = mbr.partition_table[i].relative_sector as u64;
+                    let bytes_per_sector = ebpb.bytes_per_sector();
+
+                    let cache = CachedDevice::new(device, Partition { start: partition_start,
+                                                                      sector_size: bytes_per_sector as u64 });
 
                     let vfat = VFat {
-                        device: CachedDevice::new(device, partition),
-                        bytes_per_sector: bpb.num_bytes_per_sector,
-                        sectors_per_cluster: bpb.num_sectors_per_cluster,
-                        sectors_per_fat: sectors_per_fat,
-                        fat_start_sector: mbr.partition_table[i].relative_sector as u64 + bpb.num_reserved_sectors as u64,
-                        data_start_sector: mbr.partition_table[i].relative_sector as u64 + bpb.num_reserved_sectors as u64 + sectors_per_fat as u64 * bpb.num_file_allocation_tables as u64,
-                        root_dir_cluster: Cluster::from(bpb.cluster_num_root_dir)
+                        device: cache,
+                        bytes_per_sector,
+                        sectors_per_cluster: ebpb.sectors_per_cluster(),
+                        sectors_per_fat: ebpb.sectors_per_fat(),
+                        fat_start_sector: partition_start + ebpb.fat_start_sector(),
+                        data_start_sector: partition_start + ebpb.data_start_sector(),
+                        root_dir_cluster: Cluster::from(ebpb.root_cluster()),
                     };
                     return Ok( Shared::new( vfat ) )
 
@@ -71,161 +68,200 @@ impl VFat {
     //
     //  * A method to read from an offset of a cluster into a buffer.
     //
-    fn read_cluster(
+    pub fn read_cluster(
         &mut self,
         cluster: Cluster,
         offset: usize,
         buf: &mut [u8]
     ) -> io::Result<usize> {
+        let cluster_start_sector = self.data_start_sector as usize + 
+                                   cluster.data_index() * self.sectors_per_cluster as usize;
+        let mut sector_index = offset / self.bytes_per_sector as usize;
         let sector_size = self.device.sector_size() as usize;
-        let len_bytes_cluster = sector_size * self.sectors_per_cluster as usize;
-        
-        let mut sector = self.data_start_sector as usize +
-            (cluster.cluster_num() as usize - 2usize ) * self.sectors_per_cluster as usize + //data clusters starts at 2
-            offset as usize / self.bytes_per_sector as usize;
+        let cluster_bytes = sector_size as usize * self.sectors_per_cluster as usize;
 
-        //amount of data to read
-        let len_to_read = if buf.len() < len_bytes_cluster - offset {
+        // bytes of data to read
+        let bytes_to_read = if buf.len() < cluster_bytes - offset {
             buf.len()
         } else {
-            len_bytes_cluster - offset
+            cluster_bytes - offset
         };
-        //starting offset of the read
-        let mut bytes_remain = offset % self.bytes_per_sector as usize;
 
-        let mut read = 0;
+        let mut bytes_offset = offset % self.bytes_per_sector as usize;
+        let mut bytes_read = 0;
         loop {
-
-            if read >= len_to_read {
+            if bytes_read >= bytes_to_read {
                 break;
             }
-            
-            let sector_data : &[u8] = self.device.get( sector as u64 )?;
-            
-            let device_read = sector_data.len();
+            let sector_data : &[u8] = self.device.get( (cluster_start_sector + sector_index) as u64 )?;
 
-            //amount of data to be read from the current sector
-            let len_copy = if len_to_read - read < sector_size - bytes_remain {
-                len_to_read - read
+            // calculate the bytes read in the current sector
+            let bytes_copy = if bytes_to_read - bytes_read < sector_size - bytes_offset {
+                bytes_to_read - bytes_read
             } else {
-                sector_size - bytes_remain
+                sector_size - bytes_offset
             };
-            
-            buf[ read.. read + len_copy ].copy_from_slice( &sector_data[ bytes_remain.. bytes_remain + len_copy ] );
+            buf[bytes_read..bytes_read+bytes_copy].copy_from_slice(&sector_data[bytes_offset..bytes_offset+bytes_copy]);
 
-            bytes_remain = 0; //zero the offset after first read
-            sector += 1;
-            read += len_copy;
+            bytes_offset = 0;
+            sector_index += 1;
+            bytes_read += bytes_copy;
         }
 
-        Ok( read )
+        Ok(bytes_read)
+
+
+    }
+
+    fn append_cluster_data(
+        &mut self,
+        cluster: Cluster,
+        buf: &mut Vec<u8>
+    ) -> io::Result<usize> {
+        let cluster_size = self.bytes_per_sector as usize * self.sectors_per_cluster as usize;
+        buf.reserve(cluster_size);
+
+        let len_before = buf.len();
+
+        unsafe {
+            buf.set_len(len_before + cluster_size);
+        }
+
+        let bytes_read = self.read_cluster(
+            cluster, 0, &mut buf[len_before..])?;
+
+        // Set the vector back to its actual size.
+        unsafe {
+            buf.set_len(len_before + bytes_read);
+        }
+
+        Ok(bytes_read)
     }
     //
     //  * A method to read all of the clusters chained from a starting cluster
     //    into a vector.
     //
-    fn read_chain(
+    pub fn read_chain(
         &mut self,
         start: Cluster,
         buf: &mut Vec<u8>
     ) -> io::Result<usize> {
-        let bytes_per_cluster = self.bytes_per_sector as usize * self.sectors_per_cluster as usize;
-        let mut read = 0;
-        let mut current = start;
-        
-        buf.clear();
+        let mut cur_cluster = start;
+        let mut bytes_read = 0;
 
-        let mut cycle_detect = None;
-        
-        //check status of current fat entry
-        match self.fat_entry( current )?.status() {
-            Status::Data(x) => {
-                cycle_detect = Some( x );
-            },
-            Status::Eoc(x) => {},
-            _ => { return Err( io::Error::new( io::ErrorKind::InvalidData,
-                                            "Invalid cluster chain" ) )
-            },
-        }
-        
         loop {
+            let fat_entry = self.fat_entry(cur_cluster)?.status();
 
-            // println!("read chain loop");
-            
-            if let Some(x) = cycle_detect {
-                if current.cluster_num() == x.cluster_num() {
-                    return Err( io::Error::new( io::ErrorKind::InvalidData,
-                                                "FAT cluster chain has a cycle" ) )
+            match fat_entry {
+                Status::Data(next_cluster) => {
+                    bytes_read += self.append_cluster_data(cur_cluster, buf)?;
+                    cur_cluster = next_cluster;
                 }
-            }
-
-            buf.resize( read + bytes_per_cluster, 0 );
-
-            let offset = 0;
-            let bytes_read = self.read_cluster( current, offset, & mut buf[read..] )?;
-            read += bytes_read;
-
-            //advance to next cluster
-            match self.fat_entry( current )?.status() {
-                Status::Data( x ) => {
-                    current = x;
-                },
-                Status::Eoc( x ) => {
-                    break; //done
-                },
-                _ => { return Err( io::Error::new( io::ErrorKind::InvalidData,
-                                                "Invalid cluster chain" ) )
-                },
-            }
-
-            //advance the cycle detector twice as fast
-            for _ in 0..2 {
-                if let Some( x ) = cycle_detect {
-                    match self.fat_entry( x )?.status() {
-                        Status::Data( y ) => {
-                            cycle_detect = Some( y );
-                        },
-                        Status::Eoc(_) => {
-                            cycle_detect = None;
-                        },
-                        _ => { return Err( io::Error::new( io::ErrorKind::InvalidData,
-                                                        "Invalid cluster chain" ) )
-                        },
-                    }
+                Status::Eoc(_) => {
+                    bytes_read += self.append_cluster_data(cur_cluster, buf)?;
+                    break;
                 }
+                _ => return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid cluster entry")),
             }
         }
-
-        Ok( read )
+        Ok(bytes_read)
     }
     //
     //  * A method to return a reference to a `FatEntry` for a cluster where the
     //    reference points directly into a cached sector.
     //
     pub fn fat_entry(&mut self, cluster: Cluster) -> io::Result<&FatEntry> {
-
         use std::mem;
-        use std::slice;
+        const size : usize = mem::size_of::<FatEntry>();
+        let fat_sector = cluster.fat_index() * size / self.bytes_per_sector as usize;
+        let fat_index = cluster.fat_index() * size % self.bytes_per_sector as usize;
+        // if fat_sector >= self.sectors_per_fat {
+        //     return Err(io::Error::new(io::ErrorKind::NotFound,
+        //                               "Invalid cluster index"));
+        // }
+        let data = self.device.get(self.fat_start_sector + fat_sector as u64)?;
+        Ok(unsafe { &data[fat_index..fat_index + size].cast()[0] })
+        // use std::mem;
+        // use std::slice;
         
-        const s : usize = mem::size_of::<FatEntry>();
-        let origin = self.fat_start_sector;
-        let sector_whole = cluster.cluster_num() * s / self.bytes_per_sector as usize;
-        let bytes_remainder = cluster.cluster_num() * s % self.bytes_per_sector as usize;
-        let sector_offset = origin + sector_whole as u64;
-        let cached_sector_slice : &[u8] = self.device.get( sector_offset )?;
-        let fat_entry = unsafe { slice::from_raw_parts( & cached_sector_slice[bytes_remainder] as * const u8 as * const FatEntry, 1 ) };
+        // const s : usize = mem::size_of::<FatEntry>();
+        // let sector_whole = cluster.fat_index() * s / self.bytes_per_sector as usize;
+        // let bytes_remainder = cluster.fat_index() * s % self.bytes_per_sector as usize;
+        // let sector_offset = self.fat_start_sector + sector_whole as u64;
+        // let cached_sector_slice : &[u8] = self.device.get( sector_offset )?;
+        // let fat_entry = unsafe { slice::from_raw_parts( & cached_sector_slice[bytes_remainder] as * const u8 as * const FatEntry, 1 ) };
         
-        Ok( &fat_entry[0] )
+        // Ok( &fat_entry[0] )
+    }
+
+    pub fn find_sector(&mut self, start: Cluster, offset: usize)
+        -> io::Result<(Cluster, usize)>
+    {
+        let cluster_size = self.bytes_per_sector as usize
+                            * self.sectors_per_cluster as usize;
+
+        let cluster_index = offset / cluster_size;
+        let mut cluster = start;
+
+        for i in 0..cluster_index {
+            let fat_entry = self.fat_entry(cluster)?.status();
+
+            match fat_entry {
+                Status::Data(next) => {
+                    cluster = next;
+                },
+                Status::Eoc(_) => {
+                    if i + 1 != cluster_index {
+                        return Err(io::Error::new(
+                                                io::ErrorKind::UnexpectedEof,
+                                                "Data does not match size"));
+                    }
+
+                    cluster = Cluster::from(0xFFFFFFFF);
+                },
+                _ => return Err(io::Error::new(io::ErrorKind::InvalidData,
+                                               "Invalid cluster entry")),
+            }
+        }
+
+        Ok((cluster, cluster_index * cluster_size))
     }
 }
 
 impl<'a> FileSystem for &'a Shared<VFat> {
-    type File = ::traits::Dummy;
-    type Dir = ::traits::Dummy;
-    type Entry = ::traits::Dummy;
+    type File = File;
+    type Dir = Dir;
+    type Entry = Entry;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        unimplemented!("FileSystem::open()")
+        use vfat::{Entry, Metadata};
+        use std::path::Component;
+
+        let root_cluster = self.borrow().root_dir_cluster;
+        let mut dir = Entry::new_dir("".to_string(),
+                                     Metadata::default(),
+                                     Dir::new(root_cluster, self.clone()));
+
+        for component in path.as_ref().components() {
+            match component {
+                Component::ParentDir => {
+                    use traits::Entry;
+                    dir = dir.into_dir().ok_or(
+                        io::Error::new(io::ErrorKind::NotFound,
+                                       "Expected dir"))?.find("..")?;
+                },
+                Component::Normal(name) => {
+                    use traits::Entry;
+                    dir = dir.into_dir().ok_or(
+                        io::Error::new(io::ErrorKind::NotFound,
+                                       "Expected dir"))?.find(name)?;
+                }
+                _ => (),
+            }
+            
+        }
+        Ok(dir)
+
     }
 
     fn create_file<P: AsRef<Path>>(self, _path: P) -> io::Result<Self::File> {

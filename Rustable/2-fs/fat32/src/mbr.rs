@@ -1,4 +1,4 @@
-use std::{fmt, io, ptr};
+use std::{fmt, io, ptr, mem};
 
 use traits::BlockDevice;
 
@@ -50,18 +50,21 @@ impl MasterBootRecord {
     /// boot indicator. Returns `Io(err)` if the I/O error `err` occured while
     /// reading the MBR.
     pub fn from<T: BlockDevice>(mut device: T) -> Result<MasterBootRecord, Error> {
-        let mut buf = vec![];
-        let read = match device.read_all_sector(0, &mut buf) {
+        let mut buf = [0u8; 512];
+        let bytes = match device.read_sector(0, &mut buf) {
             Ok(read) => { read },
             Err(err) => { return Err(Error::Io(err))}
         };
-        use std::slice;
-        let mbr = unsafe { ptr::read( (&buf[0]) as *const u8 as *const MasterBootRecord ) };
-        // let mbr = unsafe { slice::from_raw_parts((&buf[0]) as *const u8, 512) as MasterBootRecord};
 
+        if bytes != 512 {
+            return Err(Error::Io(io::Error::new(io::ErrorKind::UnexpectedEof, "MBR too short")))
+        }
+
+        let mbr: MasterBootRecord = unsafe { mem::transmute(buf) };
         if mbr.signature != [0x55, 0xAA] {
             return Err(Error::BadSignature);
         }
+
         for i in 0..4 {
             match mbr.partition_table[i].boot_indicator {
                 0x00 | 0x80 => {},

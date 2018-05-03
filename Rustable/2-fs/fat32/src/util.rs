@@ -110,3 +110,17 @@ impl<T> SliceExt for [T] {
         from_raw_parts_mut(new_ptr, new_len)
     }
 }
+
+/// A wrapper type that prevents read or writes to its value.
+///
+/// This type implements no methods. It is meant to make the inner type
+/// inaccessible to prevent accidental reads or writes.
+#[repr(C, packed)]
+#[derive(Copy, Clone)]
+pub struct Unused<T>(T);
+
+// impl<T> fmt::Debug for Unused<T> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "Unused ({} bytes)", size_of::<T>())
+//     }
+// }

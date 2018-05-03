@@ -20,23 +20,12 @@ impl Atag {
 
     /// Returns the ATAG following `self`, if there is one.
     pub fn next(&self) -> Option<&Atag> {
-        if self.tag == Atag::NONE {
-            None
-        } else {
-            let len_in_words = self.dwords;
-            let addr = self as * const Atag as * const u32;
-            let offset = unsafe { addr.offset( len_in_words as isize ) };
-            let atag = unsafe{ &*( offset as * const Atag ) } as & Atag;
-            Some( atag )
+        let curr_addr = (self as *const Atag as *const u32);
+        let next_addr = unsafe{ &*(curr_addr.add(self.dwords as usize) as *const Atag) };
+        if next_addr.tag == Atag::NONE {
+            return None;
         }
-    }
-    /// Returns the ATAG following `self`, if there is one.
-    pub fn current(&self) -> Option<&Atag> {
-        if self.tag == Atag::NONE {
-            None
-        } else {
-            Some( self )
-        }
+        Some(next_addr)
     }
 }
 

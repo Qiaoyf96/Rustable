@@ -26,3 +26,5 @@ pi = { path = "../pi", features = ["std"] }
 # from assignment 1
 stack-vec = { path = "../../1-shell/stack-vec/" }
 
+# from assignment 2
+fat32 = { path = "../../2-fs/fat32/" }

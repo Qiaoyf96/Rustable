@@ -20,6 +20,7 @@
 extern crate alloc;
 extern crate pi;
 extern crate stack_vec;
+extern crate fat32;
 
 pub mod allocator;
 pub mod lang_items;
@@ -30,6 +31,19 @@ pub mod traps;
 pub mod aarch64;
 pub mod process;
 pub mod vm;
+pub mod fs;
+
+#[cfg(not(test))]
+use allocator::Allocator;
+use fs::FileSystem;
+
+#[cfg(not(test))]
+#[global_allocator]
+pub static ALLOCATOR: Allocator = Allocator::uninitialized();
+
+pub static FILE_SYSTEM: FileSystem = FileSystem::uninitialized();
+
+pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
 
 #[cfg(not(test))]
 use process::GlobalScheduler;
@@ -37,20 +51,12 @@ use pi::timer::{spin_sleep_ms, current_time};
 
 use process::sys_sleep;
 
-#[cfg(not(test))]
-use allocator::Allocator;
-
-#[cfg(not(test))]
-#[global_allocator]
-pub static ALLOCATOR: Allocator = Allocator::uninitialized();
-pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
-
 pub extern "C" fn shell_thread() {
     // unsafe { asm!("brk 1" :::: "volatile"); }
     // shell::shell("$ ");
     console::kprintln!("thread1 before sleep");
-    sys_sleep(1000);
-    console::kprintln!("thread1");
+    // sys_sleep(1000);
+    // console::kprintln!("thread1");
     loop {
         // sys_sleep(1000);
 
@@ -62,17 +68,19 @@ pub extern "C" fn shell_thread() {
 
 pub extern "C" fn shell_thread_2() {
     console::kprintln!("thread2");
+    shell::shell("# ");
     loop {
         // sys_sleep(1000);
         aarch64::nop();
         // console::kprintln!("thread 2");
-        // shell::shell("# ");
     }
 }
 
 #[no_mangle]
+#[cfg(not(test))]
 pub extern "C" fn kmain() {
     // FIXME: Start the shell.
+    // ALLOCATOR.initialize();
     spin_sleep_ms(1000);
     let begin = r#"
             @@@@@@@@@@                                                                                                   
@@ -90,9 +98,7 @@ pub extern "C" fn kmain() {
                  .#=                                                                                          "#;
     console::kprint!("{}\n", begin);
     ALLOCATOR.initialize();
-
-    // unsafe { asm!("brk 2" :::: "volatile"); }
+    FILE_SYSTEM.initialize();
     SCHEDULER.start();
-    
     // shell::shell("Rainable: ");
 }

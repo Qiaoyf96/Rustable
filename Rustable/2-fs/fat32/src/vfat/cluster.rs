@@ -11,7 +11,17 @@ impl From<u32> for Cluster {
 
 // TODO: Implement any useful helper methods on `Cluster`.
 impl Cluster {
-    pub(super) fn cluster_num( & self ) -> usize {
+    /// Is this a valid cluster?
+    pub fn is_valid(&self) -> bool {
+        self.0 > 2
+    }
+
+    pub fn fat_index(&self) -> usize {
         self.0 as usize
+    }
+
+    /// Get the cluster index represented by this cluster.
+    pub fn data_index(&self) -> usize {
+        (self.0 - 2) as usize
     }
 }
