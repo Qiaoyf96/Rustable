@@ -26,6 +26,17 @@ impl File {
                cluster_current: start_cluster,
                cluster_current_start: 0 }
     }
+
+    fn set_pointer(&mut self, pointer: u64) -> io::Result<u64> {
+        self.pointer = pointer;
+
+        let (cluster, cluster_start) = self.vfat.borrow_mut().find_sector(
+            self.start_cluster, self.pointer as usize)?;
+        self.cluster_current = cluster;
+        self.cluster_current_start = cluster_start;
+
+        Ok(self.pointer)
+    }
 }
 
 // FIXME: Implement `traits::File` (and its supertraits) for `File`.
@@ -100,6 +111,37 @@ impl io::Seek for File {
     /// Seeking before the start of a file or beyond the end of the file results
     /// in an `InvalidInput` error.
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
-        unimplemented!("File::seek()")
+        match pos {
+            SeekFrom::Start(offset) => {
+                if offset > self.size as u64 {
+                    Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                       "Out of bounds"))
+                } else {
+                    self.set_pointer(offset)
+                }
+            },
+            SeekFrom::End(offset) => {
+                if offset > 0 || offset + (self.size as i64) < 0 {
+                    Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                       "Out of bounds"))
+                } else {
+                    let pointer = (self.size as i64 + offset) as u64;
+                    self.set_pointer(pointer)
+                }
+            },
+            SeekFrom::Current(offset) => {
+                if offset >= 0 && offset as u64 + self.pointer
+                                    <= self.size as u64 {
+                    let pointer = self.pointer + offset as u64;
+                    self.set_pointer(pointer)
+                } else if offset < 0 && (-offset as u64) <= self.pointer {
+                    let pointer = self.pointer - (-offset as u64);
+                    self.set_pointer(pointer)
+                } else {
+                    Err(io::Error::new(io::ErrorKind::InvalidInput,
+                                       "Out of bounds"))
+                }
+            }
+        }
     }
 }

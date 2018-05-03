@@ -156,9 +156,7 @@ impl Dir {
     pub fn new(start_cluster: Cluster, vfat: Shared<VFat>) -> Dir {
         Dir { start_cluster, vfat }
     }
-}
 
-// impl Dir {
     /// Finds the entry named `name` in `self` and returns it. Comparison is
     /// case-insensitive.
     ///
@@ -169,10 +167,17 @@ impl Dir {
     ///
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
-    // pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry> {
-        
-    // }
-// }
+    pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry> {
+       use traits::{Dir, Entry};
+
+        let name_str = name.as_ref().to_str().ok_or(
+            io::Error::new(io::ErrorKind::InvalidInput, "Invalid UTF-8"))?;
+
+        self.entries()?.find(|item| {
+            item.name().eq_ignore_ascii_case(name_str)
+        }).ok_or(io::Error::new(io::ErrorKind::NotFound, "Not found"))
+    }
+}
 
 impl DirIterator {
     fn LFN_filename(LFN_entry: &mut Vec<&VFatLfnDirEntry>) -> String {
