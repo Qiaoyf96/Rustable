@@ -59,6 +59,9 @@ pub extern "C" fn kmain() {
        .@@@@    @@@@@   @@@@@@@  @@@@@@@  @@@@@@@@@    @@@@@@@  ;@@@@@@@ @@@@@@@ @@@@@@@@@.     @@@@@@@  @@@@@@@@@      
                  .#=                                                                                          "#;
     console::kprint!("{}\n", begin);
+    ALLOCATOR.initialize();
+    FILE_SYSTEM.initialize();
+    
     shell::shell("Rainable: ");
     
 }
