@@ -26,7 +26,9 @@ impl FileSystem {
     ///
     /// Panics if the underlying disk or file sytem failed to initialize.
     pub fn initialize(&self) {
-        unimplemented!("FileSystem::initialize()")
+        let sd = Sd::new().expect("Init Sd");
+        let vfat = VFat::from(sd).expect("Create VFat");
+        *self.0.lock() = Some(vfat);
     }
 
     fn get_vfat(&self) -> io::Result<Shared<VFat>> {
