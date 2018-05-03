@@ -44,7 +44,7 @@ pub struct Info {
 /// the value of the exception syndrome register. Finally, `tf` is a pointer to
 /// the trap frame for the exception.
 #[no_mangle]
-pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
+pub extern fn oinfo: Info, esr: u32, tf: &mut TrapFrame) {
     // kprintln!("{:?} {:?} {}", info.source, info.kind, esr);
     if info.kind == Kind::Synchronous {
         match Syndrome::from(esr) {
