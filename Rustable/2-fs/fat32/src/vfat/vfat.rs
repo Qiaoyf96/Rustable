@@ -229,12 +229,39 @@ impl VFat {
 }
 
 impl<'a> FileSystem for &'a Shared<VFat> {
-    type File = ::traits::Dummy;
-    type Dir = ::traits::Dummy;
-    type Entry = ::traits::Dummy;
+    type File = File;
+    type Dir = Dir;
+    type Entry = Entry;
 
     fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry> {
-        unimplemented!("FileSystem::open()")
+        use vfat::{Entry, Metadata};
+        use std::path::Component;
+
+        let root_cluster = self.borrow().root_dir_cluster;
+        let mut dir = Entry::new_dir("".to_string(),
+                                     Metadata::default(),
+                                     Dir::new(root_cluster, self.clone()));
+
+        for component in path.as_ref().components() {
+            match component {
+                Component::ParentDir => {
+                    use traits::Entry;
+                    dir = dir.into_dir().ok_or(
+                        io::Error::new(io::ErrorKind::NotFound,
+                                       "Expected dir"))?.find("..")?;
+                },
+                Component::Normal(name) => {
+                    use traits::Entry;
+                    dir = dir.into_dir().ok_or(
+                        io::Error::new(io::ErrorKind::NotFound,
+                                       "Expected dir"))?.find(name)?;
+                }
+                _ => (),
+            }
+            
+        }
+        Ok(dir)
+
     }
 
     fn create_file<P: AsRef<Path>>(self, _path: P) -> io::Result<Self::File> {
