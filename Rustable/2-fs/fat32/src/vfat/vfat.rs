@@ -68,7 +68,7 @@ impl VFat {
     //
     //  * A method to read from an offset of a cluster into a buffer.
     //
-    fn read_cluster(
+    pub fn read_cluster(
         &mut self,
         cluster: Cluster,
         offset: usize,
@@ -141,7 +141,7 @@ impl VFat {
     //  * A method to read all of the clusters chained from a starting cluster
     //    into a vector.
     //
-    fn read_chain(
+    pub fn read_chain(
         &mut self,
         start: Cluster,
         buf: &mut Vec<u8>
@@ -192,6 +192,39 @@ impl VFat {
         // let fat_entry = unsafe { slice::from_raw_parts( & cached_sector_slice[bytes_remainder] as * const u8 as * const FatEntry, 1 ) };
         
         // Ok( &fat_entry[0] )
+    }
+
+    pub fn find_sector(&mut self, start: Cluster, offset: usize)
+        -> io::Result<(Cluster, usize)>
+    {
+        let cluster_size = self.bytes_per_sector as usize
+                            * self.sectors_per_cluster as usize;
+
+        let cluster_index = offset / cluster_size;
+        let mut cluster = start;
+
+        for i in 0..cluster_index {
+            let fat_entry = self.fat_entry(cluster)?.status();
+
+            match fat_entry {
+                Status::Data(next) => {
+                    cluster = next;
+                },
+                Status::Eoc(_) => {
+                    if i + 1 != cluster_index {
+                        return Err(io::Error::new(
+                                                io::ErrorKind::UnexpectedEof,
+                                                "Data does not match size"));
+                    }
+
+                    cluster = Cluster::from(0xFFFFFFFF);
+                },
+                _ => return Err(io::Error::new(io::ErrorKind::InvalidData,
+                                               "Invalid cluster entry")),
+            }
+        }
+
+        Ok((cluster, cluster_index * cluster_size))
     }
 }
 
