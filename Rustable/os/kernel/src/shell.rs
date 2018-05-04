@@ -53,31 +53,50 @@ const BELL: u8 = 7u8;
 const SPACE: u8 = b' ';
 
 fn read_line<'a>(buf_vec: &'a mut StackVec<'a, u8>) -> &'a str {
-    let mut console = CONSOLE.lock();
     loop {
-        match console.read_byte() {
+        let single_byte = {
+            let mut console = CONSOLE.lock();
+            console.read_byte()
+        };
+        match single_byte {
             LF | CR => break,
             BACK | DEL => {
                 match buf_vec.pop() {
                     Some(_) => {
+                        let mut console = CONSOLE.lock();
                         console.write_byte(BACK);
                         console.write_byte(b' ');
                         console.write_byte(BACK);
                     },
-                    None => { console.write_byte(BELL); }
+                    None => { 
+                        let mut console = CONSOLE.lock();
+                        console.write_byte(BELL); 
+                    }
                 }
             },
             byte if byte.is_ascii_graphic() || byte == SPACE => {
                 match buf_vec.push(byte) {
-                    Ok(_) => console.write_byte(byte),
-                    Err(_) => console.write_byte(BELL)
+                    Ok(_) => {
+                        let mut console = CONSOLE.lock();
+                        console.write_byte(byte);
+                    },
+                    Err(_) => {
+                        let mut console = CONSOLE.lock();
+                        console.write_byte(BELL);
+                    }
                 }
             }
-            _ => console.write_byte(BELL)
+            _ => {
+                let mut console = CONSOLE.lock();
+                console.write_byte(BELL);
+            }
         }
     }
-    console.write_byte(b'\r');
-    console.write_byte(b'\n');
+    {
+        let mut console = CONSOLE.lock();
+        console.write_byte(b'\r');
+        console.write_byte(b'\n');
+    }
     std::str::from_utf8(buf_vec.as_slice()).unwrap_or("")
 }
 
@@ -259,14 +278,14 @@ fn handle_cat(args: &[&str], working_dir: &PathBuf) {
     let mut dir = working_dir.clone();
     dir.push(args[0]);
 
-    kprintln!("cat");
+    kprintln!("cat-b");
     let entry_result = FILE_SYSTEM.open(dir.as_path());
+    kprintln!("cat-a");
     if entry_result.is_err() {
         kprintln!("Path not found.");
         return;
     }
 
-    kprintln!("cat");
     let entry = entry_result.unwrap();
     if let Some(ref mut file) = entry.into_file() {
         loop {

@@ -9,6 +9,8 @@ pub use fat32::traits;
 use mutex::Mutex;
 use self::sd::Sd;
 
+use console::kprintln;
+
 pub struct FileSystem(Mutex<Option<Shared<VFat>>>);
 
 impl FileSystem {
@@ -26,9 +28,13 @@ impl FileSystem {
     ///
     /// Panics if the underlying disk or file sytem failed to initialize.
     pub fn initialize(&self) {
+        kprintln!("haha");
         let sd = Sd::new().expect("Init Sd");
+        kprintln!("haha");
         let vfat = VFat::from(sd).expect("Create VFat");
+        kprintln!("haha");
         *self.0.lock() = Some(vfat);
+        kprintln!("haha");
     }
 
     fn get_vfat(&self) -> io::Result<Shared<VFat>> {

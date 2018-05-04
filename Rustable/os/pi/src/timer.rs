@@ -36,10 +36,9 @@ impl Timer {
     }
 
     pub fn tick_in(&mut self, us: u32) {
-        let current_low = self.registers.CLO.read();
-        let compare = current_low.wrapping_add(us);
-        self.registers.COMPARE[1].write(compare); // timer 1
-        self.registers.CS.or_mask(0b0010); // clear timer 1 interrupt
+        let future = self.read().wrapping_add( us as u64 );
+        self.registers.COMPARE[1].write( ( future & 0xFFFFFFFF ) as u32 );
+        self.registers.CS.write( 0b1 << 1 ); //clear match bit for timer 1
     }
 }
 
@@ -50,11 +49,12 @@ pub fn current_time() -> u64 {
 
 /// Spins until `us` microseconds have passed.
 pub fn spin_sleep_us(us: u64) {
-    let timer = Timer::new();
-    for _ in 0..us {
-        let lo = timer.registers.CLO.read();
-        timer.registers.COMPARE[1].write(lo + 1);
-        while !timer.registers.CS.has_mask(0b10u32) {}
+    let start = current_time();
+    loop {
+        let now = current_time();
+        if now >= start + us {
+            break;
+        }
     }
 }
 
@@ -64,6 +64,5 @@ pub fn spin_sleep_ms(ms: u64) {
 }
 
 pub fn tick_in(us: u32) {
-    let mut timer = Timer::new();
-    timer.tick_in(us);
+    Timer::new().tick_in(us);
 }

@@ -53,7 +53,7 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                 tf.elr += 4;
             },
             Syndrome::Svc(syscall) => {
-                kprintln!("syscall");
+                // kprintln!("syscall");
                 handle_syscall(syscall, tf);
                 return;
             }

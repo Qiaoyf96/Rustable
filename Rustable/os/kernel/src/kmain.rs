@@ -54,13 +54,13 @@ use process::sys_sleep;
 pub extern "C" fn shell_thread() {
     // unsafe { asm!("brk 1" :::: "volatile"); }
     // shell::shell("$ ");
-    console::kprintln!("thread1 before sleep");
+    // shell::shell("# ");
     // sys_sleep(1000);
-    // console::kprintln!("thread1");
+    console::kprintln!("thread1");
     loop {
-        // sys_sleep(1000);
-
-        aarch64::nop();
+        sys_sleep(1000);
+        console::kprintln!("thread1");
+        // aarch64::nop();
         // console::kprintln!("thread 1");
         // shell::shell("$ ");
     }
@@ -68,10 +68,9 @@ pub extern "C" fn shell_thread() {
 
 pub extern "C" fn shell_thread_2() {
     console::kprintln!("thread2");
-    shell::shell("# ");
     loop {
-        // sys_sleep(1000);
-        aarch64::nop();
+        shell::shell("# ");
+        // aarch64::nop();
         // console::kprintln!("thread 2");
     }
 }
