@@ -70,20 +70,39 @@ pub struct DirIterator {
 
 impl VFatRegularDirEntry {
     pub fn filename(&self) -> String {
-        let name = VFatRegularDirEntry::fat_string(&self.filename);
+        // let name = VFatRegularDirEntry::fat_string(&self.filename);
 
-        if !self.is_dir() {
-            let extension = VFatRegularDirEntry::fat_string(&self.extension);
+        // if !self.is_dir() {
+        //     let extension = VFatRegularDirEntry::fat_string(&self.extension);
 
-            if !extension.is_empty() {
-                let mut full_name = name.into_owned();
-                full_name.push('.');
-                full_name.push_str(&extension);
-                return full_name;
-            }
-        }
+        //     if !extension.is_empty() {
+        //         let mut full_name = name.into_owned();
+        //         full_name.push('.');
+        //         full_name.push_str(&extension);
+        //         return full_name;
+        //     }
+        // }
 
-        name.into_owned()
+        // name.into_owned()
+        use std::str;
+        let short_file_name = self.filename.clone();
+        let short_file_ext = self.extension.clone();
+        let file_name = [104, 101, 108, 108, 111, 111, 111, 111];
+        // String::from( str::from_utf8( &file_name ).unwrap().trim_right() )
+        String::from( str::from_utf8( &short_file_name ).unwrap().trim_right() )
+        // let short_name = str::from_utf8( &regular_entry.file_name ).unwrap().trim_right();
+        // let short_ext = str::from_utf8( &regular_entry.file_extension ).unwrap().trim_right();
+        // let short_name = str::from_utf8( &short_file_name ).unwrap().trim_right();
+        // let short_ext = str::from_utf8( &short_file_ext ).unwrap().trim_right();
+        
+        // let short_file_name = if short_ext.len() > 0 {
+        //     let mut s = String::from( short_name );
+        //     s.push_str( &"." );
+        //     s.push_str( short_ext );
+        //     s
+        // } else {
+        //     String::from( short_name )
+        // };
     }
 
     pub fn fat_string<'a>(buf: &'a [u8]) -> Cow<'a, str> {
