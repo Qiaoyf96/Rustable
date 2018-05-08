@@ -1,7 +1,7 @@
 mod linked_list;
 mod util;
 
-#[path = "bin.rs"]
+#[path = "first_fit.rs"]
 mod imp;
 
 #[cfg(test)]
@@ -33,8 +33,12 @@ impl Allocator {
     ///
     /// Panics if the system's memory map could not be retrieved.
     pub fn initialize(&self) {
-        let (start, end) = memory_map().expect("failed to find memory map");
-        *self.0.lock() = Some(imp::Allocator::new(start, end));
+        // let (start, end) = memory_map().expect("failed to find memory map");
+        *self.0.lock() = Some(imp::Allocator::new());
+    }
+
+    pub fn init_memmap(&mut self, base: usize, npage: u32) {
+        self.0.lock().as_mut().expect("allocator uninitialized").init_memmap(base, npage);
     }
 }
 
@@ -103,3 +107,5 @@ fn memory_map() -> Option<(usize, usize)> {
     }
     None
 }
+
+
