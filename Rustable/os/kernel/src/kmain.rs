@@ -36,6 +36,7 @@ pub mod fs;
 #[cfg(not(test))]
 use allocator::Allocator;
 use fs::FileSystem;
+use mm::pmm::Pmm;
 
 #[cfg(not(test))]
 #[global_allocator]
@@ -96,7 +97,10 @@ pub extern "C" fn kmain() {
        .@@@@    @@@@@   @@@@@@@  @@@@@@@  @@@@@@@@@    @@@@@@@  ;@@@@@@@ @@@@@@@ @@@@@@@@@.     @@@@@@@  @@@@@@@@@      
                  .#=                                                                                          "#;
     console::kprint!("{}\n", begin);
-    ALLOCATOR.initialize();
+    
+    let pmm = Pmm;
+    pmm.init();
+
     FILE_SYSTEM.initialize();
     SCHEDULER.start();
     // shell::shell("Rainable: ");

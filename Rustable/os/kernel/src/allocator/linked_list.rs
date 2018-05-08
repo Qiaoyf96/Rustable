@@ -56,6 +56,7 @@ use std::{fmt, ptr};
 /// assert_eq!(list.pop(), Some(address_1));
 /// assert_eq!(list.pop(), None);
 /// ```
+
 #[derive(Copy, Clone)]
 pub struct LinkedList {
     head: *mut usize,
@@ -86,6 +87,15 @@ impl LinkedList {
     pub unsafe fn push(&mut self, item: *mut usize) {
         *item = self.head as usize;
         self.head = item;
+    }
+    
+    pub unsafe fn push_after(&mut self, item: *mut usize) {
+        *item = *self.head;
+        *self.head = item;
+    }
+    
+    pub unsafe fn del(&mut self) {
+        self.head = *self.head;
     }
 
     /// inserts the item into the list according to ascending order
