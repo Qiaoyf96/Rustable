@@ -31,7 +31,7 @@ impl FileSystem {
         kprintln!("fs initializing...");
         let sd = Sd::new().expect("Init Sd");
         kprintln!("sd initialized");
-        let vfat = VFat::from(sd, (&|x| { kprintln!("from FS: {}", x) }) as *const Fn(usize)).expect("Create VFat");
+        let vfat = VFat::from(sd).expect("Create VFat");
         kprintln!("vfat initialized");
         *self.0.lock() = Some(vfat);
         kprintln!("haha");

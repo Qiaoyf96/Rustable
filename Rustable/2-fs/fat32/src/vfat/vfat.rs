@@ -18,11 +18,10 @@ pub struct VFat {
     fat_start_sector: u64,
     data_start_sector: u64,
     root_dir_cluster: Cluster,
-    pub print_func: *const Fn(usize),
 }
 
 impl VFat {
-    pub fn from<T>(mut device: T, print: *const Fn(usize)) -> Result<Shared<VFat>, Error>
+    pub fn from<T>(mut device: T) -> Result<Shared<VFat>, Error>
         where T: BlockDevice + 'static
     {
         let mbr = MasterBootRecord::from(&mut device)?;
@@ -55,7 +54,6 @@ impl VFat {
                         fat_start_sector: partition_start + ebpb.fat_start_sector(),
                         data_start_sector: partition_start + ebpb.data_start_sector(),
                         root_dir_cluster: Cluster::from(ebpb.root_cluster()),
-                        print_func: print,
                     };
                     return Ok( Shared::new( vfat ) )
 
@@ -239,36 +237,25 @@ impl<'a> FileSystem for &'a Shared<VFat> {
         use vfat::{Entry, Metadata};
         use std::path::Component;
 
-        let vfat = self.borrow();
-
-        let print_func = unsafe { &*(vfat.print_func) };
-        print_func(1);
-
-        let root_cluster = vfat.root_dir_cluster;
-        print_func(2);
+        let root_cluster = self.borrow().root_dir_cluster;
         let mut dir = Entry::new_dir("".to_string(),
                                      Metadata::default(),
                                      Dir::new(root_cluster, self.clone()));
-        print_func(3);
+
         for component in path.as_ref().components() {
-            print_func(4);
             match component {
                 Component::ParentDir => {
-                    print_func(41);
                     use traits::Entry;
                     dir = dir.into_dir().ok_or(
                         io::Error::new(io::ErrorKind::NotFound,
-                                       "Expected dir"))?.find("..", print_func)?;
+                                       "Expected dir"))?.find("..")?;
                 },
                 Component::Normal(name) => {
-                    print_func(42);
                     use traits::Entry;
                     let temp = dir.into_dir().ok_or(
                         io::Error::new(io::ErrorKind::NotFound,
                                        "Expected dir"))?;
-                    print_func(421);
-                    dir = temp.find(name, print_func)?;
-                    print_func(422);
+                    dir = temp.find(name)?;
                 }
                 _ => (),
             }
