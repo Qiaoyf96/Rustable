@@ -49,16 +49,27 @@ impl BiosParameterBlock {
         mut device: T,
         sector: u64
     ) -> Result<BiosParameterBlock, Error> {
+
         let mut buf = vec![];
+
         let read = match device.read_all_sector(sector, &mut buf) {
             Ok(read) => { read },
             Err(err) => { return Err(Error::Io(err))}
         };
 
         let bpb = unsafe { ptr::read( (&buf[0]) as *const u8 as *const BiosParameterBlock ) };
+        // use std::mem;
+        // let mut buf = [0u8; 512];
+        // let bytes = match device.read_sector(sector, &mut buf) {
+        //     Ok(read) => { read },
+        //     Err(err) => { return Err(Error::Io(err))}
+        // };
+        // let bpb: BiosParameterBlock = unsafe { mem::transmute(buf) };
+
         if bpb.bootable_partition_signature != [0x55, 0xAA] {
             return Err(Error::BadSignature);
         }
+
         Ok(bpb)
     }
 

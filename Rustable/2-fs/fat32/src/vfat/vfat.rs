@@ -18,34 +18,35 @@ pub struct VFat {
     fat_start_sector: u64,
     data_start_sector: u64,
     root_dir_cluster: Cluster,
+    pub print_func: *const Fn(usize),
 }
 
 impl VFat {
-    pub fn from<T>(mut device: T) -> Result<Shared<VFat>, Error>
+    pub fn from<T>(mut device: T, print: *const Fn(usize)) -> Result<Shared<VFat>, Error>
         where T: BlockDevice + 'static
     {
-       let mbr = MasterBootRecord::from(&mut device)?;
+        let mbr = MasterBootRecord::from(&mut device)?;
+        
 
         //find the first FAT
         for i in 0..4 {
             match mbr.partition_table[i].partition_type {
-                0x0B | 0x0C => { 
+                0x0B | 0x0C => {  
                     // let bpb = match BiosParameterBlock::from(&mut device, mbr.partition_table[i].relative_sector as u64) {
                     //     Ok( bpb ) => { bpb },
                     //     Err( e ) => { return Err( e )}
                     // };
                     let ebpb = BiosParameterBlock::from(&mut device, mbr.partition_table[i].relative_sector as u64)?;
-
                     // if bpb.num_bytes_per_sector == 0 {
                     //     return Err( Error::Io( io::Error::new( io::ErrorKind::Other, "logic sector size invalid" ) ) )
                     // }
 
                     let partition_start = mbr.partition_table[i].relative_sector as u64;
+
                     let bytes_per_sector = ebpb.bytes_per_sector();
 
                     let cache = CachedDevice::new(device, Partition { start: partition_start,
                                                                       sector_size: bytes_per_sector as u64 });
-
                     let vfat = VFat {
                         device: cache,
                         bytes_per_sector,
@@ -54,6 +55,7 @@ impl VFat {
                         fat_start_sector: partition_start + ebpb.fat_start_sector(),
                         data_start_sector: partition_start + ebpb.data_start_sector(),
                         root_dir_cluster: Cluster::from(ebpb.root_cluster()),
+                        print_func: print,
                     };
                     return Ok( Shared::new( vfat ) )
 
@@ -237,28 +239,40 @@ impl<'a> FileSystem for &'a Shared<VFat> {
         use vfat::{Entry, Metadata};
         use std::path::Component;
 
-        let root_cluster = self.borrow().root_dir_cluster;
+        let vfat = self.borrow();
+
+        let print_func = unsafe { &*(vfat.print_func) };
+        print_func(1);
+
+        let root_cluster = vfat.root_dir_cluster;
+        print_func(2);
         let mut dir = Entry::new_dir("".to_string(),
                                      Metadata::default(),
                                      Dir::new(root_cluster, self.clone()));
-
+        print_func(3);
         for component in path.as_ref().components() {
+            print_func(4);
             match component {
                 Component::ParentDir => {
+                    print_func(41);
                     use traits::Entry;
                     dir = dir.into_dir().ok_or(
                         io::Error::new(io::ErrorKind::NotFound,
-                                       "Expected dir"))?.find("..")?;
+                                       "Expected dir"))?.find("..", print_func)?;
                 },
                 Component::Normal(name) => {
+                    print_func(42);
                     use traits::Entry;
-                    dir = dir.into_dir().ok_or(
+                    let temp = dir.into_dir().ok_or(
                         io::Error::new(io::ErrorKind::NotFound,
-                                       "Expected dir"))?.find(name)?;
+                                       "Expected dir"))?;
+                    print_func(421);
+                    dir = temp.find(name, print_func)?;
+                    print_func(422);
                 }
                 _ => (),
             }
-            
+        
         }
         Ok(dir)
 

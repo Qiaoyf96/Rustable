@@ -5,7 +5,7 @@ use pi::timer::tick_in;
 use process::{State, TICK};
 use SCHEDULER;
 
-use console;
+// use console;
 
 pub fn handle_irq(interrupt: Interrupt, tf: &mut TrapFrame) {
     match interrupt {

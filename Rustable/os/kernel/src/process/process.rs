@@ -1,7 +1,7 @@
 use traps::TrapFrame;
 use process::{State, Stack};
 
-use console;
+// use console;
 use std::mem;
 
 /// Type alias for the type of a process ID.

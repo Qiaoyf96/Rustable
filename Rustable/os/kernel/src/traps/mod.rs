@@ -7,8 +7,8 @@ use pi::interrupt::{Controller, Interrupt};
 
 pub use self::trap_frame::TrapFrame;
 
-use console::kprintln;
-use aarch64;
+// use console::kprintln;
+// use aarch64;
 use self::syndrome::Syndrome;
 use self::irq::handle_irq;
 use self::syscall::handle_syscall;

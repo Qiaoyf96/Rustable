@@ -1,3 +1,3 @@
-mod pmm;
+pub mod pmm;
 
-pub use pmm::Pmm;
+pub use self::pmm::Pmm;

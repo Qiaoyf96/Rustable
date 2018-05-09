@@ -1,5 +1,6 @@
 use console::{kprint, kprintln};
-use pi::timer::{spin_sleep_ms, current_time};
+use pi::timer::spin_sleep_ms;
+// use pi::timer::{spin_sleep_ms, current_time};
 
 #[cfg(not(test))] #[lang = "eh_personality"] pub extern fn eh_personality() {}
 

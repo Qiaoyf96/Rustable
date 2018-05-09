@@ -228,15 +228,16 @@ fn handle_ls(mut args: &[&str], working_dir: &PathBuf) {
     if show_hidden {
         args = &args[1..];
     }
-
+    kprintln!("1");
     if args.len() > 1 {
         kprintln!("Usage:");
         kprintln!("ls [-a] [directory]");
         kprintln!();
         return;
     }
-
+    kprintln!("2");
     let mut dir = working_dir.clone();
+    kprintln!("3");
     if !args.is_empty() {
         if args[0] == "." {
             // No-op.
@@ -246,13 +247,18 @@ fn handle_ls(mut args: &[&str], working_dir: &PathBuf) {
             dir.push(args[0]);
         }
     }
+    kprintln!("4");
+    use std::path::Display;
+    kprintln!("{}", dir.as_path().display());
     let entry_result = FILE_SYSTEM.open(dir.as_path());
+    kprintln!("5");
     if entry_result.is_err() {
         kprintln!("Path not found.");
         return;
     }
+    kprintln!("6");
     let entry = entry_result.unwrap();
-
+    kprintln!("7");
     if let Some(dir_entry) = entry.into_dir() {
         let mut entries = dir_entry.entries().expect("List dir");
         for item in entries {
@@ -263,6 +269,7 @@ fn handle_ls(mut args: &[&str], working_dir: &PathBuf) {
     } else {
         kprintln!("Not a directory.");
     }
+    kprintln!("8");
 }
 
 fn handle_cat(args: &[&str], working_dir: &PathBuf) {

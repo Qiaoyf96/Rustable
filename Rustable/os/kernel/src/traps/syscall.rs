@@ -3,7 +3,7 @@ use process::State;
 use process::Process;
 use pi::timer::current_time;
 use SCHEDULER;
-use console;
+// use console;
 
 /// Sleep for `ms` milliseconds.
 ///
