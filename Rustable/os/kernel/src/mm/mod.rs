@@ -1,3 +1,5 @@
-mod pmm;
+pub mod pmm;
+pub mod vm;
 
-pub use pmm::Pmm;
+pub use self::pmm::Pmm;
+pub use self::vm::vm_init;

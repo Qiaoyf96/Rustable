@@ -59,7 +59,7 @@ use std::{fmt, ptr};
 
 #[derive(Copy, Clone)]
 pub struct LinkedList {
-    head: *mut usize,
+    pub head: *mut usize,
 }
 
 unsafe impl Send for LinkedList {}
@@ -91,11 +91,15 @@ impl LinkedList {
     
     pub unsafe fn push_after(&mut self, item: *mut usize) {
         *item = *self.head;
-        *self.head = item;
+        *self.head = item as usize;
     }
     
     pub unsafe fn del(&mut self) {
-        self.head = *self.head;
+        self.head = *self.head as *mut usize;
+    }
+
+    pub unsafe fn remove_head(&mut self) {
+        self.head = *self.head as *mut usize;
     }
 
     /// inserts the item into the list according to ascending order

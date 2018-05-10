@@ -187,7 +187,9 @@ impl Dir {
     /// If `name` contains invalid UTF-8 characters, an error of `InvalidInput`
     /// is returned.
     pub fn find<P: AsRef<OsStr>>(&self, name: P) -> io::Result<Entry> {
-       use traits::{Dir, Entry};
+        use traits::{Dir, Entry};
+        // let print_func = unsafe { &*(self.vfat.borrow_mut().print_func) };
+        // print_func(1111111111);
 
         let name_str = name.as_ref().to_str().ok_or(
             io::Error::new(io::ErrorKind::InvalidInput, "Invalid UTF-8"))?;

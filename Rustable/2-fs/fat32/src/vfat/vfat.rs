@@ -24,28 +24,28 @@ impl VFat {
     pub fn from<T>(mut device: T) -> Result<Shared<VFat>, Error>
         where T: BlockDevice + 'static
     {
-       let mbr = MasterBootRecord::from(&mut device)?;
+        let mbr = MasterBootRecord::from(&mut device)?;
+        
 
         //find the first FAT
         for i in 0..4 {
             match mbr.partition_table[i].partition_type {
-                0x0B | 0x0C => { 
+                0x0B | 0x0C => {  
                     // let bpb = match BiosParameterBlock::from(&mut device, mbr.partition_table[i].relative_sector as u64) {
                     //     Ok( bpb ) => { bpb },
                     //     Err( e ) => { return Err( e )}
                     // };
                     let ebpb = BiosParameterBlock::from(&mut device, mbr.partition_table[i].relative_sector as u64)?;
-
                     // if bpb.num_bytes_per_sector == 0 {
                     //     return Err( Error::Io( io::Error::new( io::ErrorKind::Other, "logic sector size invalid" ) ) )
                     // }
 
                     let partition_start = mbr.partition_table[i].relative_sector as u64;
+
                     let bytes_per_sector = ebpb.bytes_per_sector();
 
                     let cache = CachedDevice::new(device, Partition { start: partition_start,
                                                                       sector_size: bytes_per_sector as u64 });
-
                     let vfat = VFat {
                         device: cache,
                         bytes_per_sector,
@@ -252,13 +252,14 @@ impl<'a> FileSystem for &'a Shared<VFat> {
                 },
                 Component::Normal(name) => {
                     use traits::Entry;
-                    dir = dir.into_dir().ok_or(
+                    let temp = dir.into_dir().ok_or(
                         io::Error::new(io::ErrorKind::NotFound,
-                                       "Expected dir"))?.find(name)?;
+                                       "Expected dir"))?;
+                    dir = temp.find(name)?;
                 }
                 _ => (),
             }
-            
+        
         }
         Ok(dir)
 

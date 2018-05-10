@@ -11,7 +11,7 @@ use aarch64;
 use shell_thread;
 use shell_thread_2;
 
-use console;
+// use console;
 
 /// The `tick` time.
 // FIXME: When you're ready, change this to something more reasonable.

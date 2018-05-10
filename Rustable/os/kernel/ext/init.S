@@ -43,6 +43,8 @@ switch_to_el2:
     eret
 
 switch_to_el1:
+    bl vm_init
+    
     // switch to EL1 if we're not already in EL1. otherwise continue with start
     cmp     x0, EL1
     beq     set_stack
@@ -103,6 +105,25 @@ zero_bss_loop:
     str     xzr, [x1], #8
     sub     x2, x2, #8
     cbnz    x2, zero_bss_loop
+
+el1_mmu_activate:
+    ldr x0, =0x04cc
+    msr mair_el1, x0
+    isb
+
+    ldr x1, =0x01000000
+    msr ttbr0_el1, x1
+    msr ttbr1_el1, x1
+    isb
+
+    mrs x2, tcr_el1
+    ldr x3, =0x70040ffbf
+    bic x2, x2, x3
+
+    ldr x3, =0x2bf183f18
+    orr x2, x2, x3
+    msr tcr_el1, x2
+    isb
 
 go_kmain:
     // jump to kmain, which shouldn't return. halt if it does

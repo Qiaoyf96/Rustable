@@ -30,8 +30,8 @@ pub mod shell;
 pub mod traps;
 pub mod aarch64;
 pub mod process;
-pub mod vm;
 pub mod fs;
+pub mod mm;
 
 #[cfg(not(test))]
 use allocator::Allocator;
@@ -48,7 +48,7 @@ pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
 
 #[cfg(not(test))]
 use process::GlobalScheduler;
-use pi::timer::{spin_sleep_ms, current_time};
+use pi::timer::{spin_sleep_ms};
 
 use process::sys_sleep;
 
@@ -100,8 +100,29 @@ pub extern "C" fn kmain() {
     
     let pmm = Pmm;
     pmm.init();
+    
+    console::kprintln!("Physical memory initialized!");
+
+    // DEBUG
+    // let mut buf = vec![];
+    let buf = vec![1, 2, 3, 4, 5];
+    console::kprintln!("vec test!");
+    // buf.push(1);
+    console::kprintln!("vec test: {} {} {} {} {} {} ", buf.len(), buf[0], buf[1], buf[2], buf[3], buf[4]);
+
+    let addr = &buf as *const alloc::Vec<i32> as *mut usize as usize;
+    console::kprintln!("vec addr: {}", addr);
+
+    let a = [1, 2, 3];
+
+    assert_eq!(a.iter().find(|&&x| x == 2), Some(&2));
+
+    assert_eq!(a.iter().find(|&&x| x == 5), None);
 
     FILE_SYSTEM.initialize();
-    SCHEDULER.start();
-    // shell::shell("Rainable: ");
+
+    console::kprintln!("File system initialized!");
+
+    // SCHEDULER.start();
+    shell::shell("Rainable: ");
 }

@@ -3,7 +3,7 @@ use std::ptr::Unique;
 
 use ALLOCATOR;
 use alloc::allocator::{Alloc, Layout};
-use vm::PhysicalAddr;
+use mm::vm::PhysicalAddr;
 
 /// A process stack. The default size is 1M1B with an alignment of 16 bytes.
 pub struct Stack {
