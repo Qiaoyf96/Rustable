@@ -132,15 +132,95 @@ impl Allocator {
         let npage = align_up(_layout.size(), PGSIZE) / PGSIZE;
 
         let mut page_list = unsafe { std::slice::from_raw_parts_mut(self.page_list_addr as *mut Page, self.page_list_size) };
+        let mut base_page_addr: usize = 0;
 
         for i in 0..npage {
+            //assert(!PageReserved(p) && !PageProperty(p));
             if i == 0 {
-                page_list[PPN(_ptr as usize) + i].ClearPageProperty();
                 page_list[PPN(_ptr as usize) + i].property = npage as u32;
+                page_list[PPN(_ptr as usize) + i].SetPageProperty();
+                base_page_addr = &page_list[PPN(_ptr as usize) + i] as *const Page as usize;
+                // base_page = Some(&page_list[PPN(_ptr)])
             }
+            page_list[PPN(_ptr as usize) + i].flags = 0;
             page_list[PPN(_ptr as usize) + i].set_page_ref(0);
         }
-        unsafe { self.free_list.push(&page_list[PPN(_ptr as usize)] as *const Page as *mut usize) };
+
+        let mut prev = false;
+        let mut next = false;
+        let mut base_page = unsafe { &mut *(base_page_addr as *mut Page) };
+        let mut next_prev = None;
+        
+        for i in self.free_list.iter_mut() {
+            let mut p = unsafe { &mut *(i.value() as *mut Page) };
+            if base_page_addr + mem::size_of::<Page>() * base_page.property as usize == i.value() as usize {
+                base_page.property += p.property;
+                p.ClearPageProperty();
+                next = true;
+                break;
+            }
+            next_prev = Some(p);
+        }
+
+        if next {
+            match next_prev {
+                Some(next_prev) => unsafe { next_prev.list_entry.del() },
+                _ => unsafe { self.free_list.remove_head() },
+            }
+        }
+
+
+        for i in self.free_list.iter_mut() {
+            let mut p = unsafe { &mut *(i.value() as *mut Page) };
+            if i.value() as usize + mem::size_of::<Page>() * p.property as usize == base_page_addr {
+                p.property += base_page.property;
+                base_page.ClearPageProperty();
+                prev = true;
+            }
+        }
+
+        if !prev {
+            unsafe{ self.free_list.push(base_page_addr as *mut usize) };
+        } 
+
+        // for i in self.free_list.iter_mut() {
+        //     let mut p = unsafe { &mut *(i.value() as *mut Page) };
+        //     base_page = base_addr as *mut Page;
+        //     if base_addr + mem::size_of::<Page>() * base_page.property == i.value() {  // base + base->property == p
+        //         base_page.property += p.property;
+        //         p.ClearPageProperty();
+        //         p_addr = i.value();
+        //         next = Some(p);
+        //         break;
+        //     } else if i.value() + mem::size_of::<Page>() * p.property == base_addr {
+        //         p.property += base_page.property;
+        //         base_page.ClearPageProperty();
+        //         base_addr = i.value();
+        //         p_addr = i.value();
+        //         prev = Some(p);
+        //     }
+        //     if p_addr > base_addr {
+        //         break;
+        //     }
+
+        // }
+
+        // if next != None {
+        //     if prev == None{
+        //         unsafe { next.list_entry.push(base_addr as *const Page as *mut usize) }
+        //     }
+        //     unsafe { next.list_entry.del() }
+        // }
+        // if prev == None && next == None {
+        //     if (p_addr > base_addr && p_addr != base_addr + npage) {
+        //         //list_add_before(&(p->page_link), &(base->page_link));
+        //     } else {
+        //         //list_add_before(&free_list, &(base->page_link));
+        //     }
+        // }
+
+        // unsafe { self.free_list.push(&page_list[PPN(_ptr as usize)] as *const Page as *mut usize) };
+        self.n_free += npage as u32;
         kprintln!("dealloc ed");
     }
 }
