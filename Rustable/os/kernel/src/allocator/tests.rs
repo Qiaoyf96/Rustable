@@ -56,8 +56,8 @@ mod align_util {
 
 #[path = ""]
 mod allocator {
-    #[allow(dead_code)] mod bump;
-    #[allow(dead_code)] mod bin;
+    #[allow(dead_code)] mod bin
+    #[allow(dead_code)] mod bump 
 
     use alloc::allocator::{AllocErr, Layout};
     use alloc::raw_vec::RawVec;

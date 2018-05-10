@@ -30,7 +30,6 @@ pub mod shell;
 pub mod traps;
 pub mod aarch64;
 pub mod process;
-pub mod vm;
 pub mod fs;
 pub mod mm;
 

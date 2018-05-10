@@ -10,14 +10,14 @@ mod page_table;
 
 use self::page_table::boot_alloc_page;
 
-use allocator::page::{PGSIZE, Page, PPN};
+use allocator::page::{PGSIZE, Page, PPN, MAXPA};
 
 
 use console::kprintln;
 
 pub struct Pmm;
 
-const MAXPA: u32 = (512 * 1024 * 1024);
+
 
 impl Pmm {
     pub fn init(&self) {

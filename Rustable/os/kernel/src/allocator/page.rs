@@ -2,7 +2,7 @@ use allocator::linked_list::LinkedList;
 
 // ARM definitions.
 pub const PGSIZE: usize = 4096;
-
+pub const MAXPA: usize = (512 * 1024 * 1024);
 // index of page table entry
 pub fn PT0X(va: usize) -> usize { (va >> 39) & 0x01 }
 pub fn PT1X(va: usize) -> usize { (va >> 30) & 0x1FF }
@@ -22,21 +22,21 @@ pub const PTE2PT: usize = 512;
 
 // Page Table/Directory Entry flags
 // these are defined by the hardware
-const PTE_V: usize = 0x3 << 0;    // Table Entry Valid bit
-const PBE_V: usize = 0x1 << 0;    // Block Entry Valid bit
-const ATTRIB_AP_RW_EL1: usize = 0x0 << 6;
-const ATTRIB_AP_RW_ALL: usize = 0x1 << 6;
-const ATTRIB_AP_RO_EL1: usize = 0x2 << 6;
-const ATTRIB_AP_RO_ALL: usize = 0x3 << 6;
-const ATTRIB_SH_NON_SHAREABLE: usize = 0x0 << 8;
-const ATTRIB_SH_OUTER_SHAREABLE: usize = 0x2 << 8;
-const ATTRIB_SH_INNER_SHAREABLE: usize = 0x3 << 8;
-const AF: usize = 0x1 << 10;
-const PXN: usize = 0x0 << 53;
-// const UXN: usize = 0x1UL << 54;
-const ATTRINDX_NORMAL: usize = 0 << 2;    // inner/outer write-back non-transient, non-allocating
-const ATTRINDX_DEVICE: usize = 1 << 2;    // Device-nGnRE
-const ATTRINDX_COHERENT: usize = 2 << 2;    // Device-nGnRnE
+pub const PTE_V: usize = 0x3 << 0;    // Table Entry Valid bit
+pub const PBE_V: usize = 0x1 << 0;    // Block Entry Valid bit
+pub const ATTRIB_AP_RW_EL1: usize = 0x0 << 6;
+pub const ATTRIB_AP_RW_ALL: usize = 0x1 << 6;
+pub const ATTRIB_AP_RO_EL1: usize = 0x2 << 6;
+pub const ATTRIB_AP_RO_ALL: usize = 0x3 << 6;
+pub const ATTRIB_SH_NON_SHAREABLE: usize = 0x0 << 8;
+pub const ATTRIB_SH_OUTER_SHAREABLE: usize = 0x2 << 8;
+pub const ATTRIB_SH_INNER_SHAREABLE: usize = 0x3 << 8;
+pub const AF: usize = 0x1 << 10;
+pub const PXN: usize = 0x0 << 53;
+pub const UXN: usize = 0x1 << 54;
+pub const ATTRINDX_NORMAL: usize = 0 << 2;    // inner/outer write-back non-transient, non-allocating
+pub const ATTRINDX_DEVICE: usize = 1 << 2;    // Device-nGnRE
+pub const ATTRINDX_COHERENT: usize = 2 << 2;    // Device-nGnRnE
 
 
 
