@@ -43,8 +43,6 @@ switch_to_el2:
     eret
 
 switch_to_el1:
-    bl vm_init
-    
     // switch to EL1 if we're not already in EL1. otherwise continue with start
     cmp     x0, EL1
     beq     set_stack
@@ -64,12 +62,14 @@ switch_to_el1:
     orr     x0, x0, #(1 << 1)   // RES1 on A-53
     msr     HCR_EL2, x0
     mrs     x0, HCR_EL2
+    
 
     // enable floating point and SVE (SIMD) (A53: 4.3.38, 4.3.34)
     msr     CPTR_EL2, xzr     // don't trap accessing SVE registers
     mrs     x0, CPACR_EL1
     orr     x0, x0, #(0b11 << 20)
     msr     CPACR_EL1, x0
+    
 
     // Set SCTLR to known state (RES1: 11, 20, 22, 23, 28, 29) (A53: 4.3.30)
     mov     x2, #0x0800
@@ -107,6 +107,7 @@ zero_bss_loop:
     cbnz    x2, zero_bss_loop
 
 el1_mmu_activate:
+    bl vm_init
     ldr x0, =0x04cc
     msr mair_el1, x0
     isb
