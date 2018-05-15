@@ -10,7 +10,7 @@ mod page_table;
 
 use self::page_table::boot_alloc_page;
 
-use allocator::page::{PGSIZE, Page, PPN, MAXPA};
+use allocator::page::{PGSIZE, Page, PPN, MAXPA, VPN};
 
 
 use console::kprintln;
@@ -55,10 +55,18 @@ extern "C" {
     static _end: u8;
 }
 
+fn VADDR(kaddr: usize) -> usize {
+    (kaddr + 0xffffff0000000000) as usize
+}
 
+fn PADDR(vaddr: usize) -> usize {
+    (vaddr - 0xffffff0000000000) as usize
+}
 
 fn page_init() {
-    let binary_end = unsafe { (&_end as *const u8) as u32 };
+    let binary_end = unsafe { (&_end as *const u8) as usize };
+    let binary_end_val = unsafe { *(&_end as *const u8 as *const usize) };
+    kprintln!("Binary_end: {:x} {:x}", binary_end, binary_end_val);
     let mut maxpa = 0 as usize;
     let PMEMSIZE = (512 * 1024 * 1024) as usize;
     for atag in Atags::get() {
@@ -95,21 +103,21 @@ fn page_init() {
     for atag in Atags::get() {
         match atag.mem() {
             Some(mem) => {
-                let mut begin = mem.start as usize;
-                let mut end = mem.size as usize;
+                let mut begin = VADDR(mem.start as usize);
+                let mut end = VADDR(mem.size as usize);
                 kprintln!("mem2: {:x} {:x}", begin, end);
                 if begin < FREEMEM {
                     begin = FREEMEM;
                 }
-                if end > PMEMSIZE {
-                    end = PMEMSIZE;
-                }
+                // if end > PMEMSIZE {
+                //     end = PMEMSIZE;
+                // }
                 kprintln!("mem3: {:x} {:x}", begin, end);
                 if begin < end {
                     begin = align_up(begin, PGSIZE);
                     end = align_down(end, PGSIZE);
                     kprintln!("mem4: {:x} {:x}", begin, end);
-                    let page_addr = &page[PPN(begin)] as *const Page as *mut usize as usize;
+                    let page_addr = &page[VPN(begin)] as *const Page as *mut usize as usize;
                     kprintln!("page addr {:x}", page_addr);
                     if begin < end {
                         ALLOCATOR.init_memmap(page_addr, (end - begin) / PGSIZE, begin);
