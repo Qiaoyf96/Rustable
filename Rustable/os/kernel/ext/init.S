@@ -26,70 +26,6 @@ setup:
     and     x0, x0, #0b1100
     lsr     x0, x0, #2
 
-switch_to_el2:
-    // switch to EL2 if we're in EL3. otherwise switch to EL1
-    cmp     x0, EL3
-    bne     switch_to_el1
-
-    // set-up SCR_EL3 (bits 0, 4, 5, 7, 8, 10) (A53: 4.3.42)
-    mov     x2, #0x5b1
-    msr     SCR_EL3, x2
-
-    // set-up SPSR and PL switch! (bits 0, 3, 6, 7, 8, 9) (ref: C5.2.20)
-    mov     x2, #0x3c9
-    msr     SPSR_EL3, x2
-    adr     x2, switch_to_el1
-    msr     ELR_EL3, x2
-    eret
-
-switch_to_el1:
-    bl vm_init
-    
-    // switch to EL1 if we're not already in EL1. otherwise continue with start
-    cmp     x0, EL1
-    beq     set_stack
-
-    // set the stack-pointer for EL1
-    msr     SP_EL1, x1
-
-    // enable CNTP for EL1/EL0 (ref: D7.5.2, D7.5.13)
-    // NOTE: This doesn't actually enable the counter stream.
-    mrs     x0, CNTHCTL_EL2
-    orr     x0, x0, #0b11
-    msr     CNTHCTL_EL2, x0
-    msr     CNTVOFF_EL2, xzr
-
-    // enable AArch64 in EL1 (A53: 4.3.36)
-    mov     x0, #(1 << 31)      // Enable AArch64 for EL1
-    orr     x0, x0, #(1 << 1)   // RES1 on A-53
-    msr     HCR_EL2, x0
-    mrs     x0, HCR_EL2
-
-    // enable floating point and SVE (SIMD) (A53: 4.3.38, 4.3.34)
-    msr     CPTR_EL2, xzr     // don't trap accessing SVE registers
-    mrs     x0, CPACR_EL1
-    orr     x0, x0, #(0b11 << 20)
-    msr     CPACR_EL1, x0
-
-    // Set SCTLR to known state (RES1: 11, 20, 22, 23, 28, 29) (A53: 4.3.30)
-    mov     x2, #0x0800
-    movk    x2, #0x30d0, lsl #16
-    msr     SCTLR_EL1, x2
-
-    // set up exception handlers
-    // FIXME: load `_vectors` addr into appropriate register (guide: 10.4)
-    ldr     x2, =_vectors
-    msr     VBAR_EL1, x2
-
-    // change execution level to EL1 (ref: C5.2.19)
-    mov     x2, #0x3c5
-    msr     SPSR_EL2, x2
-
-    // FIXME: Return to EL1 at `set_stack`.
-    adr     x2, set_stack
-    msr     ELR_EL2, x2
-    eret
-
 set_stack:
     // set the current stack pointer
     mov     sp, x1
@@ -106,26 +42,11 @@ zero_bss_loop:
     sub     x2, x2, #8
     cbnz    x2, zero_bss_loop
 
-el1_mmu_activate:
-    ldr x0, =0x04cc
-    msr mair_el1, x0
-    isb
-
-    ldr x1, =0x01000000
-    msr ttbr0_el1, x1
-    msr ttbr1_el1, x1
-    isb
-
-    mrs x2, tcr_el1
-    ldr x3, =0x70040ffbf
-    bic x2, x2, x3
-
-    ldr x3, =0x2bf183f18
-    orr x2, x2, x3
-    msr tcr_el1, x2
-    isb
-
 go_kmain:
+    // set up exception handlers
+    ldr     x2, =_vectors
+    msr     VBAR_EL1, x2
+    
     // jump to kmain, which shouldn't return. halt if it does
     bl      kmain
     b       halt

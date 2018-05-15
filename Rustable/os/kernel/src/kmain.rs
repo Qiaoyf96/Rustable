@@ -110,8 +110,8 @@ pub extern "C" fn kmain() {
     // buf.push(1);
     console::kprintln!("vec test: {} {} {} {} {} {} ", buf.len(), buf[0], buf[1], buf[2], buf[3], buf[4]);
 
-    let addr = &buf as *const alloc::Vec<i32> as *mut usize as usize;
-    console::kprintln!("vec addr: {}", addr);
+    let addr = &buf[0] as *const i32 as *mut usize as usize;
+    console::kprintln!("vec addr: {:x}", addr);
 
     let a = [1, 2, 3];
 

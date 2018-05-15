@@ -3,7 +3,7 @@ use std;
 use std::mem;
 use allocator::util::*;
 use allocator::linked_list::LinkedList;
-use allocator::page::{PGSIZE, Page, PPN};
+use allocator::page::{PGSIZE, Page, PPN, VPN};
 
 use console::kprintln;
 
@@ -137,13 +137,13 @@ impl Allocator {
         for i in 0..npage {
             //assert(!PageReserved(p) && !PageProperty(p));
             if i == 0 {
-                page_list[PPN(_ptr as usize) + i].property = npage as u32;
-                page_list[PPN(_ptr as usize) + i].SetPageProperty();
-                base_page_addr = &page_list[PPN(_ptr as usize) + i] as *const Page as usize;
+                page_list[VPN(_ptr as usize) + i].property = npage as u32;
+                page_list[VPN(_ptr as usize) + i].SetPageProperty();
+                base_page_addr = &page_list[VPN(_ptr as usize) + i] as *const Page as usize;
                 // base_page = Some(&page_list[PPN(_ptr)])
             }
-            page_list[PPN(_ptr as usize) + i].flags = 0;
-            page_list[PPN(_ptr as usize) + i].set_page_ref(0);
+            page_list[VPN(_ptr as usize) + i].flags = 0;
+            page_list[VPN(_ptr as usize) + i].set_page_ref(0);
         }
 
         let mut prev = false;
