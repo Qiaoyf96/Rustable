@@ -6,10 +6,11 @@ extern crate pi;
 use std::fmt::Write;
 
 pub mod lang_items;
+pub mod mm_init;
 
-/// Start address of the binary to load and of the bootloader.
-const BINARY_START_ADDR: usize = 0x80000;
-const BOOTLOADER_START_ADDR: usize = 0x4000000;
+/// Start address of the binary to load and of the bootloader. 0xffffff0001000000
+const BINARY_START_ADDR: usize = 0xffffff0000800000;
+const BOOTLOADER_START_ADDR: usize = 0xffffff0004000000;
 
 /// Pointer to where the loaded binary expects to be laoded.
 const BINARY_START: *mut u8 = BINARY_START_ADDR as *mut u8;
@@ -31,7 +32,8 @@ pub extern "C" fn kmain() {
     let mut uart = pi::uart::MiniUart::new();
     uart.set_read_timeout(750);
     loop {
-        let addr = unsafe { std::slice::from_raw_parts_mut(BINARY_START, MAX_BINARY_SIZE) };
+        let mut addr = unsafe { std::slice::from_raw_parts_mut(BINARY_START, MAX_BINARY_SIZE) };
+        // addr[0] = 0x1;
         match xmodem::Xmodem::receive(&mut uart, std::io::Cursor::new(addr)) {
             Ok(_) => { jump_to(BINARY_START); },
             Err(err) => match err.kind() {
