@@ -1,9 +1,11 @@
 mod irq;
 mod trap_frame;
-mod syndrome;
+pub mod syndrome;
 mod syscall;
 
 use pi::interrupt::{Controller, Interrupt};
+
+use mm::vm::page_fault::do_pgfault;
 
 pub use self::trap_frame::TrapFrame;
 
@@ -13,6 +15,7 @@ use self::syndrome::Syndrome;
 use self::irq::handle_irq;
 use self::syscall::handle_syscall;
 use shell;
+use console::kprintln;
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -45,7 +48,7 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    // kprintln!("{:?} {:?} {}", info.source, info.kind, esr);
+    kprintln!("{:?} {:?} {}", info.source, info.kind, esr);
     if info.kind == Kind::Synchronous {
         match Syndrome::from(esr) {
             Syndrome::Brk(i) => {
@@ -53,10 +56,14 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                 tf.elr += 4;
             },
             Syndrome::Svc(syscall) => {
-                // kprintln!("syscall");
+                kprintln!("syscall");
                 handle_syscall(syscall, tf);
                 return;
-            }
+            },
+            Syndrome::DataAbort{kind, level} => {
+                do_pgfault(kind, level);
+                return;
+            },
             _ => {}
         }
     } else if info.kind == Kind::Irq {

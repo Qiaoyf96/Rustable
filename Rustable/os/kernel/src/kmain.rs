@@ -53,7 +53,6 @@ use pi::timer::{spin_sleep_ms};
 use process::sys_sleep;
 
 pub extern "C" fn shell_thread() {
-    // unsafe { asm!("brk 1" :::: "volatile"); }
     // shell::shell("$ ");
     // shell::shell("# ");
     // sys_sleep(1000);
@@ -122,6 +121,14 @@ pub extern "C" fn kmain() {
     FILE_SYSTEM.initialize();
 
     console::kprintln!("File system initialized!");
+
+    let illegal_addr: usize = 512*1024*1024+1;
+
+    let illegal_val = unsafe { *(illegal_addr as *const usize) };
+
+    console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
+    
+    unsafe { asm!("svc 2" :::: "volatile"); }
 
     // SCHEDULER.start();
     shell::shell("Rainable: ");

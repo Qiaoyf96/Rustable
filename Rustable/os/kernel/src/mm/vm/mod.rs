@@ -1,4 +1,5 @@
 mod address;
+pub mod page_fault;
 pub use self::address::{PhysicalAddr, VirtualAddr};
 
 use allocator::page::{
