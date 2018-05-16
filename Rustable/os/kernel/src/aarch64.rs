@@ -1,3 +1,14 @@
+#[inline(always)]
+pub fn tlb_invalidate(va: usize) {
+    unsafe{
+        asm!("dsb ishst
+              tlbi vmalle1is
+              dsb ish
+              tlbi vmalle1is
+              isb");
+    }
+}
+
 /// Returns the current stack pointer.
 #[inline(always)]
 pub fn sp() -> *const u8 {
@@ -18,6 +29,20 @@ pub unsafe fn current_el() -> u8 {
     let el_reg: u64;
     asm!("mrs $0, CurrentEL" : "=r"(el_reg));
     ((el_reg & 0b1100) >> 2) as u8
+}
+
+#[inline(always)]
+pub unsafe fn get_far() -> usize {
+    let far: usize;
+    asm!("mrs $0, far_el1" : "=r"(far));
+    far
+}
+
+#[inline(always)]
+pub unsafe fn get_ttbr0() -> usize {
+    let ttbr0: usize;
+    asm!("mrs $0, ttbr0_el1" : "=r"(ttbr0));
+    ttbr0
 }
 
 /// Returns the SPSel value.

@@ -86,12 +86,14 @@ context_save:
     stp     q2, q3, [SP, #-32]!
     stp     q0, q1, [SP, #-32]!
 
-    mrs x2, TPIDR_EL0
-    mrs x1, SP_EL0
+    mrs     x2, TPIDR_EL0
+    mrs     x1, SP_EL0
     stp     x1, x2, [SP, #-16]!
-    mrs x2, SPSR_EL1
-    mrs x1, ELR_EL1
+    mrs     x2, SPSR_EL1
+    mrs     x1, ELR_EL1
     stp     x1, x2, [SP, #-16]!
+    mrs     x1, TTBR0_EL1
+    str     x1, [SP, #-8]!
     
     mrs     x1, ESR_EL1
     mov     x2, sp
@@ -103,6 +105,8 @@ context_save:
 .global context_restore
 context_restore:
     // FIXME: Restore the context from the stack.
+    ldr     x1, [SP], #8
+    msr     TTBR0_EL1, x1
     ldp     x1, x2, [SP], #16
     msr     ELR_EL1, x1
     msr     SPSR_EL1, x2

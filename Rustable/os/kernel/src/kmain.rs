@@ -122,10 +122,19 @@ pub extern "C" fn kmain() {
 
     console::kprintln!("File system initialized!");
 
-    let illegal_addr: usize = 512*1024*1024+1;
 
+    // let illegal_addr: usize = 512*1024*1024 * 2+8;
+    // let illegal_val = unsafe { *(illegal_addr as *const usize) };
+    use mm::pmm::{page_remove};
+    use mm::vm::{get_pte};
+    use aarch64::get_ttbr0;
+    let ttbr0 = unsafe { get_ttbr0() };
+    page_remove(ttbr0 as *const usize, 8, get_pte(ttbr0 as *const usize , 8, false).expect(""));
+    let illegal_addr: usize = 8;
+    
     let illegal_val = unsafe { *(illegal_addr as *const usize) };
-
+    console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
+    let illegal_val = unsafe { *(illegal_addr as *const usize) };
     console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
     
     unsafe { asm!("svc 2" :::: "volatile"); }

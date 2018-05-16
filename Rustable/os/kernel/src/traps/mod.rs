@@ -52,7 +52,8 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     if info.kind == Kind::Synchronous {
         match Syndrome::from(esr) {
             Syndrome::Brk(i) => {
-                shell::shell(" [brk]$ ");
+                // shell::shell(" [brk]$ ");
+                kprintln!("brk");
                 tf.elr += 4;
             },
             Syndrome::Svc(syscall) => {

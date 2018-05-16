@@ -1,8 +1,14 @@
 use ALLOCATOR;
 use std;
 use std::mem;
+use mutex::Mutex;
 use allocator::util::{align_down, align_up};
 use alloc::heap::{AllocErr, Layout};
+use alloc::allocator::Alloc;
+use allocator::page::{pa2page, page2pa, PADDR, PTE_ADDR, PTE_V, AF, ATTRIB_SH_INNER_SHAREABLE, ATTRINDX_NORMAL, KERNEL_PAGES};
+use mm::vm::get_pte;
+use aarch64::tlb_invalidate;
+
 // use pi::atags;
 use pi::atags::Atags;
 
@@ -12,12 +18,9 @@ use self::page_table::boot_alloc_page;
 
 use allocator::page::{PGSIZE, Page, PPN, MAXPA, VPN};
 
-
 use console::kprintln;
 
 pub struct Pmm;
-
-
 
 impl Pmm {
     pub fn init(&self) {
@@ -55,18 +58,10 @@ extern "C" {
     static _end: u8;
 }
 
-fn VADDR(kaddr: usize) -> usize {
-    (kaddr + 0xffffff0000000000) as usize
-}
-
-fn PADDR(vaddr: usize) -> usize {
-    (vaddr - 0xffffff0000000000) as usize
-}
-
 fn page_init() {
-    let binary_end = unsafe { (&_end as *const u8) as usize };
-    let binary_end_val = unsafe { *(&_end as *const u8 as *const usize) };
-    kprintln!("Binary_end: {:x} {:x}", binary_end, binary_end_val);
+    let binary_end = unsafe { &_end as *const u8 as u8 };
+    // let binary_end_val = unsafe { *(&_end as *const u8 as *const usize) };
+    // kprintln!("Binary_end: {:x} {:x}", binary_end, binary_end_val);
     let mut maxpa = 0 as usize;
     let PMEMSIZE = (512 * 1024 * 1024) as usize;
     for atag in Atags::get() {
@@ -87,7 +82,7 @@ fn page_init() {
     }
     let npage = maxpa / PGSIZE;
     kprintln!("number of pages: {}", npage);
-    let pages = align_up(binary_end as usize, PGSIZE) as *mut Page;
+    let pages = align_up(KERNEL_PAGES, PGSIZE) as *mut Page;
 
     ALLOCATOR.init_page_list(pages as *mut usize as usize, npage);
 
@@ -103,12 +98,15 @@ fn page_init() {
     for atag in Atags::get() {
         match atag.mem() {
             Some(mem) => {
-                let mut begin = VADDR(mem.start as usize);
-                let mut end = VADDR(mem.size as usize);
+                let mut begin = mem.start as usize;
+                let mut end = mem.size as usize;
                 kprintln!("mem2: {:x} {:x}", begin, end);
-                if begin < FREEMEM {
-                    begin = FREEMEM;
+                if begin < PADDR(FREEMEM) {
+                    begin = PADDR(FREEMEM);
                 }
+                // if begin < binary_end {
+                //     begin = binary_end
+                // }
                 // if end > PMEMSIZE {
                 //     end = PMEMSIZE;
                 // }
@@ -117,7 +115,7 @@ fn page_init() {
                     begin = align_up(begin, PGSIZE);
                     end = align_down(end, PGSIZE);
                     kprintln!("mem4: {:x} {:x}", begin, end);
-                    let page_addr = &page[VPN(begin)] as *const Page as *mut usize as usize;
+                    let page_addr = &page[PPN(begin)] as *const Page as *mut usize as usize;
                     kprintln!("page addr {:x}", page_addr);
                     if begin < end {
                         ALLOCATOR.init_memmap(page_addr, (end - begin) / PGSIZE, begin);
@@ -132,4 +130,40 @@ fn page_init() {
         }
     }
 
+}
+
+pub fn page_insert(pgdir: *const usize, page: *mut Page, va: usize, perm: usize) -> Result<i32, i32>{
+    let PERM = perm | PTE_V | ATTRINDX_NORMAL | ATTRIB_SH_INNER_SHAREABLE | AF;
+    let mut pte: *mut usize;
+    match get_pte(pgdir, va, false) {
+        Ok(pte) => {
+            (unsafe { &mut *page }).page_ref_inc();
+            if unsafe{ *pte & PTE_V != 0} {
+                if pa2page(PTE_ADDR(unsafe{*pte})) != page {
+                    page_remove(pgdir, va, pte);
+                } else {
+                    (unsafe { &mut *page }).page_ref_dec();
+                }
+            }
+            unsafe{ *pte = PTE_ADDR(page2pa(page)) | PERM };
+            unsafe{ tlb_invalidate(va) };
+            return Ok(0);
+        },
+        Err(_) => {
+            return Err(-1);
+        }
+    }
+    Err(-1)
+}
+
+
+
+pub fn page_remove(pgdir: *const usize, va: usize, pte: *mut usize) {
+    let page = pa2page(pte as usize);
+    if (unsafe { &mut *page }).page_ref_dec() <= 0 {
+        // free_page(page);
+        unsafe { (&ALLOCATOR).dealloc(pte as *mut u8, Layout::from_size_align_unchecked(PGSIZE, PGSIZE)); }
+    }
+    unsafe { *pte = 0; }
+    unsafe{ tlb_invalidate(va) };
 }

@@ -6,6 +6,7 @@ SECTIONS {
 
   .text : {
       KEEP(*(.text.init)) /* from init.S */
+      KEEP(*(.text.asm)) /* from asm.S */
       *(.text .text.* .gnu.linkonce.t*)
   }
 

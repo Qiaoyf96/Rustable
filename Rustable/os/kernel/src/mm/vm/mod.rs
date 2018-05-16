@@ -13,6 +13,8 @@ use allocator::util::{align_down, align_up};
 use std;
 use std::{fmt, ptr};
 use console::kprintln;
+use ALLOCATOR;
+use alloc::allocator::Alloc;
 
 use pi::timer::{spin_sleep_ms};
 
@@ -107,7 +109,7 @@ fn boot_map_segment(pgdir: *mut usize, _va: usize, _size: usize, _pa: usize, per
     }
 }
 
-fn get_pte(pgdir_addr: *mut usize, va: usize, create: bool) -> Result<*mut usize, AllocErr> {
+pub fn get_pte(pgdir_addr: *const usize, va: usize, create: bool) -> Result<*mut usize, AllocErr> {
     let pgdir = unsafe { std::slice::from_raw_parts_mut(pgdir_addr as *mut usize, 512) };
     // kprintln!("virtual address: {:x}", va);
     // kprintln!("FREEMEM: {:x}", unsafe { FREEMEM });
@@ -115,7 +117,7 @@ fn get_pte(pgdir_addr: *mut usize, va: usize, create: bool) -> Result<*mut usize
     // kprintln!("pgtable0: {:x} {:x}", PT0X(va), unsafe{ *pgtable0_entry_ptr });
     let mut pgtable1 = PTE_ADDR(unsafe{ *pgtable0_entry_ptr }) + PT1X(va) * 8;
     if (unsafe{ *pgtable0_entry_ptr & PTE_V }) == 0 && create == true {
-        pgtable1 = boot_alloc(PGSIZE, true).expect("boot alloc falied") as usize;
+        pgtable1 = unsafe{ (&ALLOCATOR).alloc(Layout::from_size_align_unchecked(PGSIZE, PGSIZE)).expect("cannot alloc page") as usize };
         unsafe{ *pgtable0_entry_ptr = pgtable1 | PTE_V; }
         pgtable1 += PT1X(va) * 8;
     }
@@ -123,7 +125,7 @@ fn get_pte(pgdir_addr: *mut usize, va: usize, create: bool) -> Result<*mut usize
     let mut pgtable1_entry_ptr = pgtable1 as *mut usize;
     let mut pgtable2 = PTE_ADDR(unsafe{ *pgtable1_entry_ptr }) + PT2X(va) * 8;
     if (unsafe{ *pgtable1_entry_ptr & PTE_V }) == 0 && create == true {
-        pgtable2 = boot_alloc(PGSIZE, true).expect("boot alloc falied") as usize;
+        pgtable2 = unsafe{ (&ALLOCATOR).alloc(Layout::from_size_align_unchecked(PGSIZE, PGSIZE)).expect("cannot alloc page") as usize };
         unsafe{ *pgtable1_entry_ptr = pgtable2 | PTE_V; }
         pgtable2 += PT2X(va) * 8;
     }
@@ -131,7 +133,7 @@ fn get_pte(pgdir_addr: *mut usize, va: usize, create: bool) -> Result<*mut usize
     let mut pgtable2_entry_ptr = pgtable2 as *mut usize;
     let mut pgtable3 = PTE_ADDR(unsafe{ *pgtable2_entry_ptr }) + PT3X(va) * 8;
     if (unsafe{ *pgtable2_entry_ptr & PTE_V }) == 0 && create == true {
-        pgtable3 = boot_alloc(PGSIZE, true).expect("boot alloc falied") as usize;
+        pgtable3 = unsafe{ (&ALLOCATOR).alloc(Layout::from_size_align_unchecked(PGSIZE, PGSIZE)).expect("cannot alloc page") as usize };
         unsafe{ *pgtable2_entry_ptr = pgtable3 | PTE_V; }
         pgtable3 += PT3X(va) * 8;
     } else if (unsafe{ *pgtable2_entry_ptr & PTE_V }) == 0 {

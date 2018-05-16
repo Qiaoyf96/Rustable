@@ -2,6 +2,7 @@
 #[derive(Default, Debug, Copy, Clone)]
 pub struct TrapFrame {
     // FIXME: Fill me in.
+    pub ttbr0: u64,
     pub elr: u64,
     pub spsr: u64,
     pub sp: u64,

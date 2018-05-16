@@ -1,8 +1,10 @@
 use allocator::linked_list::LinkedList;
+use std;
 
 // ARM definitions.
 pub const PGSIZE: usize = 4096;
 pub const MAXPA: usize = (512 * 1024 * 1024);
+pub const KERNEL_PAGES: usize = 0xFFFFFF0000000000 + 0x01400000;
 // index of page table entry
 pub fn PT0X(va: usize) -> usize { (va >> 39) & 0x01 }
 pub fn PT1X(va: usize) -> usize { (va >> 30) & 0x1FF }
@@ -17,6 +19,7 @@ pub fn PPN(va: usize) -> usize { va >> 12 }
 pub fn VPN(va: usize) -> usize { (va & 0xFFFFFFFFFF) >> 12 }
 pub const PGSHIFT: usize = 12;
 pub fn KADDR(pa: usize) -> usize { pa | 0xFFFFFF0000000000 }
+pub fn PADDR(va: usize) -> usize { va & 0x000000FFFFFFFFFF }
 pub fn VA2PFN(va: usize)-> usize { va & 0xFFFFFFFFF000 } // va 2 PFN for EntryLo0/1
 pub const PTE2PT: usize = 512;
 
@@ -38,12 +41,30 @@ pub const ATTRINDX_NORMAL: usize = 0 << 2;    // inner/outer write-back non-tran
 pub const ATTRINDX_DEVICE: usize = 1 << 2;    // Device-nGnRE
 pub const ATTRINDX_COHERENT: usize = 2 << 2;    // Device-nGnRnE
 
+pub fn page2ppn(page: *const Page) -> usize {
+    return page as *const usize as usize - KERNEL_PAGES;
+}
 
+pub fn page2pa(page: *mut Page) -> usize {
+    page2ppn(page) << PGSHIFT
+}
 
+pub fn page2kva(page: *const Page) -> usize {
+    return KADDR(page2ppn(page) << PGSHIFT);
+}
+
+pub fn pa2page(pa: usize) -> *mut Page {
+    let npage = MAXPA/PGSIZE;
+    if PPN(pa) >= npage {
+        panic!("pa2page called with invalid pa: {:x}", pa);
+    }
+    let mut pages = unsafe { std::slice::from_raw_parts_mut(KERNEL_PAGES as *mut usize as *mut Page, npage) };
+    &mut pages[PPN(pa)] as *mut Page
+}
 
 pub struct Page {
     pub list_entry: LinkedList,    // used for linked list
-    pub reference: u32,           // page frame's reference counter
+    pub reference: i32,           // page frame's reference counter
     pub flags: u32,         // array of flags that describe the status of the page frame
     pub property: u32,   // the num of free block
 }
@@ -66,7 +87,17 @@ impl Page {
         self.flags = self.flags & 0xfffffffe;
     }
 
-    pub fn set_page_ref(&mut self, val: u32) {
+    pub fn set_page_ref(&mut self, val: i32) {
         self.reference = val;
+    }
+
+    pub fn page_ref_dec(&mut self) -> i32 {
+        self.reference -= 1;
+        self.reference
+    }
+
+    pub fn page_ref_inc(&mut self) -> i32 {
+        self.reference += 1;
+        self.reference
     }
 }
