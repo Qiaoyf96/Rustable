@@ -84,8 +84,6 @@ fn page_init() {
     kprintln!("number of pages: {}", npage);
     let pages = align_up(KERNEL_PAGES, PGSIZE) as *mut Page;
 
-    ALLOCATOR.init_page_list(pages as *mut usize as usize, npage);
-
     // set page reserved
     let page = unsafe { std::slice::from_raw_parts_mut(pages, npage) };
     for i in 0..npage {

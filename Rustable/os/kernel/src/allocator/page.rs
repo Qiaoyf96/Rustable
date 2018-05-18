@@ -4,7 +4,9 @@ use std;
 // ARM definitions.
 pub const PGSIZE: usize = 4096;
 pub const MAXPA: usize = (512 * 1024 * 1024);
+pub const NPAGE: usize = MAXPA / PGSIZE;
 pub const KERNEL_PAGES: usize = 0xFFFFFF0000000000 + 0x01400000;
+pub const USTACKTOP: usize = 0x80000000;
 // index of page table entry
 pub fn PT0X(va: usize) -> usize { (va >> 39) & 0x01 }
 pub fn PT1X(va: usize) -> usize { (va >> 30) & 0x1FF }
@@ -54,11 +56,10 @@ pub fn page2kva(page: *const Page) -> usize {
 }
 
 pub fn pa2page(pa: usize) -> *mut Page {
-    let npage = MAXPA/PGSIZE;
-    if PPN(pa) >= npage {
+    if PPN(pa) >= NPAGE {
         panic!("pa2page called with invalid pa: {:x}", pa);
     }
-    let mut pages = unsafe { std::slice::from_raw_parts_mut(KERNEL_PAGES as *mut usize as *mut Page, npage) };
+    let mut pages = unsafe { std::slice::from_raw_parts_mut(KERNEL_PAGES as *mut usize as *mut Page, NPAGE) };
     &mut pages[PPN(pa)] as *mut Page
 }
 

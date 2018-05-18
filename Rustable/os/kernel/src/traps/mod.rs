@@ -61,6 +61,11 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                 handle_syscall(syscall, tf);
                 return;
             },
+            Syndrome::InstructionAbort{kind, level} => {
+                kprintln!("InstructionAbort");
+                do_pgfault(kind, level);
+                return;
+            },
             Syndrome::DataAbort{kind, level} => {
                 do_pgfault(kind, level);
                 return;

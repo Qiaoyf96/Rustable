@@ -8,8 +8,15 @@ use pi::timer::tick_in;
 
 use aarch64;
 
+use console::kprintln;
+
 use shell_thread;
 use shell_thread_2;
+use std::mem;
+
+use aarch64::{get_ttbr0, get_ttbr1, get_pc};
+
+use allocator::page::PADDR;
 
 // use console;
 
@@ -48,6 +55,7 @@ impl GlobalScheduler {
     pub fn start(&self) {
         *self.0.lock() = Some(Scheduler::new());
         let mut process = Process::new().unwrap();
+        process.trap_frame.ttbr0 = 0x01000000;
         process.trap_frame.sp = process.stack.top().as_u64();
         process.trap_frame.elr = shell_thread as *mut u8 as u64;
         process.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
@@ -60,9 +68,18 @@ impl GlobalScheduler {
         // process2.trap_frame.spsr = 0b1101_00_0000; // To EL 0, currently only unmasking IRQ
         self.add(process2);
 
-        Controller::new().enable(Interrupt::Timer1);
-        tick_in(TICK);
+        // Controller::new().enable(Interrupt::Timer1);
+        // tick_in(TICK);
+
+        // let tf_addr = Box::into_raw(tf) as *mut usize as usize;
+        // kprintln!("trapframe: {:x}", tf_addr);
+        unsafe { kprintln!("ttbr0 ttbr1: {:x} {:x}", get_ttbr0(), get_ttbr1()); }
+        unsafe { kprintln!("pc: {:x}", get_pc()); }
+        kprintln!("=========== ready to switch to user process: {:x} ===========", PADDR(shell_thread as *mut u8 as usize) as u64);
         
+        // shell_thread();
+        kprintln!("instruction: {:x}", unsafe { *(shell_thread as *mut u32) });
+
         unsafe {
             asm!("mov sp, $0
               bl context_restore
@@ -71,6 +88,8 @@ impl GlobalScheduler {
               mov lr, xzr
               eret" :: "r"(tf) :: "volatile");
         };
+        
+        kprintln!("no eret");
     }
 }
 

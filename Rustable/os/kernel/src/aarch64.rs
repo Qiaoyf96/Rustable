@@ -20,6 +20,13 @@ pub fn sp() -> *const u8 {
     ptr as *const u8
 }
 
+#[inline(always)]
+pub unsafe fn get_pc() -> usize {
+    let pc: usize;
+    asm!("ADR $0, ." : "=r"(pc));
+    pc
+}
+
 /// Returns the current exception level.
 ///
 /// # Safety
@@ -42,6 +49,13 @@ pub unsafe fn get_far() -> usize {
 pub unsafe fn get_ttbr0() -> usize {
     let ttbr0: usize;
     asm!("mrs $0, ttbr0_el1" : "=r"(ttbr0));
+    ttbr0
+}
+
+#[inline(always)]
+pub unsafe fn get_ttbr1() -> usize {
+    let ttbr0: usize;
+    asm!("mrs $0, ttbr1_el1" : "=r"(ttbr0));
     ttbr0
 }
 

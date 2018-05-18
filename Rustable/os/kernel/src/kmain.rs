@@ -53,10 +53,22 @@ use pi::timer::{spin_sleep_ms};
 use process::sys_sleep;
 
 pub extern "C" fn shell_thread() {
+    // unsafe { console::kprintln!("pc: {:x}", aarch64::get_pc()); }
     // shell::shell("$ ");
     // shell::shell("# ");
     // sys_sleep(1000);
+    unsafe { asm!("svc 2" :::: "volatile"); }
+    unsafe { asm!("svc 2" :::: "volatile"); }
+    unsafe { asm!("svc 2" :::: "volatile"); }
+    unsafe { asm!("svc 2" :::: "volatile"); }
+    unsafe { asm!("svc 2" :::: "volatile"); }
+    // sys_sleep(1000);
     console::kprintln!("thread1");
+    
+    let illegal_addr: usize = 8;
+    let illegal_val = unsafe { *(illegal_addr as *const usize) };
+    console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
+
     loop {
         sys_sleep(1000);
         console::kprintln!("thread1");
@@ -68,10 +80,16 @@ pub extern "C" fn shell_thread() {
 
 pub extern "C" fn shell_thread_2() {
     console::kprintln!("thread2");
+
+    // let illegal_addr: usize = 8;
+    // let illegal_val = unsafe { *(illegal_addr as *const usize) };
+    // console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
+
     loop {
-        shell::shell("# ");
+        // shell::shell("# ");
         // aarch64::nop();
-        // console::kprintln!("thread 2");
+        sys_sleep(1000);
+        console::kprintln!("thread 2");
     }
 }
 
@@ -138,7 +156,8 @@ pub extern "C" fn kmain() {
     console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
     
     unsafe { asm!("svc 2" :::: "volatile"); }
-
-    // SCHEDULER.start();
-    shell::shell("Rainable: ");
+    
+    console::kprintln!("===schedule===");
+    SCHEDULER.start();
+    // shell::shell("Rainable: ");
 }

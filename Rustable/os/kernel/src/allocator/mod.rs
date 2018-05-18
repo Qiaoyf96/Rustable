@@ -39,10 +39,6 @@ impl Allocator {
         *self.0.lock() = Some(imp::Allocator::new());
     }
 
-    pub fn init_page_list(&self, page_list_addr: usize, page_list_size: usize) {
-        self.0.lock().as_mut().expect("allocator uninitialized").init_page_list(page_list_addr, page_list_size);
-    }
-
     pub fn init_memmap(&self, base: usize, npage: usize, begin: usize) {
         self.0.lock().as_mut().expect("allocator uninitialized").init_memmap(base, npage, begin);
     }
