@@ -53,6 +53,9 @@ go_kmain:
 
 context_save:
     // FIXME: Save the remaining context to the stack.
+    mrs     x0, TTBR0_EL1
+    str     x0, [SP, #-8]!
+
     stp     x29, lr, [SP, #-16]!
     stp     x27, x28, [SP, #-16]!
     stp     x25, x26, [SP, #-16]!
@@ -92,8 +95,6 @@ context_save:
     mrs     x2, SPSR_EL1
     mrs     x1, ELR_EL1
     stp     x1, x2, [SP, #-16]!
-    mrs     x1, TTBR0_EL1
-    str     x1, [SP, #-8]!
     
     mrs     x1, ESR_EL1
     mov     x2, sp
@@ -105,8 +106,7 @@ context_save:
 .global context_restore
 context_restore:
     // FIXME: Restore the context from the stack.
-    ldr     x1, [SP], #8
-    msr     TTBR0_EL1, x1
+
     ldp     x1, x2, [SP], #16
     msr     ELR_EL1, x1
     msr     SPSR_EL1, x2
@@ -146,6 +146,10 @@ context_restore:
     ldp     x25, x26, [SP], #16
     ldp     x27, x28, [SP], #16
     ldr     x29, [SP], #16
+    
+    ldr     x0, [SP], #8
+    msr     TTBR0_EL1, x0
+
     ret
 
 #define HANDLER(source, kind) \

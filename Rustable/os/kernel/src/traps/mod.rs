@@ -48,6 +48,7 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
+    let temp_allocator = &(ALLOCATOR.switch_content(BACKUP_ALLOCATOR));
     kprintln!("{:?} {:?} {}", info.source, info.kind, esr);
     if info.kind == Kind::Synchronous {
         match Syndrome::from(esr) {
@@ -55,19 +56,24 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                 // shell::shell(" [brk]$ ");
                 kprintln!("brk");
                 tf.elr += 4;
+                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(temp_allocator);
+                return;
             },
             Syndrome::Svc(syscall) => {
                 kprintln!("syscall");
-                handle_syscall(syscall, tf);
+                handle_syscall(syscall, tf, temp_allocator);
+                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(temp_allocator);
                 return;
             },
             Syndrome::InstructionAbort{kind, level} => {
                 kprintln!("InstructionAbort");
                 do_pgfault(kind, level);
+                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(temp_allocator);
                 return;
             },
             Syndrome::DataAbort{kind, level} => {
                 do_pgfault(kind, level);
+                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(temp_allocator);
                 return;
             },
             _ => {}
@@ -78,6 +84,7 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
         for interrupt in [Timer1, Timer3, Usb, Gpio0, Gpio1, Gpio2, Gpio3, Uart].iter() {
             if controller.is_pending(*interrupt) {
                 handle_irq(*interrupt, tf);
+                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(USER_ALLOCATOR);
                 return;
             }
         }

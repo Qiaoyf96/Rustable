@@ -1,5 +1,8 @@
 use traps::TrapFrame;
 use process::{State, Stack};
+use std::string::String;
+
+use allocator::imp::Allocator;
 
 // use console;
 use std::mem;
@@ -13,9 +16,12 @@ pub struct Process {
     /// The saved trap frame of a process.
     pub trap_frame: Box<TrapFrame>,
     /// The memory allocation used for the process's stack.
-    pub stack: Stack,
+    // pub stack: Stack,
     /// The scheduling state of the process.
     pub state: State,
+    pub proc_name: String,
+    pub allocator: Allocator,
+    pub pid: usize,
 }
 
 impl Process {
@@ -28,11 +34,22 @@ impl Process {
         match Stack::new() {
             Some(stack) => Some(Process {
                 trap_frame: Box::new(TrapFrame::default()),
-                stack,
+                // stack,
                 state: State::Ready,
+                allocator: Allocator::new(),
+                pid: 0,
             }),
             None => None,
         }
+    }
+
+    pub fn proc_init(&mut self) {
+        self.pid = get_unique_pid();
+        self.allocator.init_user();
+    }
+
+    pub fn set_proc_name(&mut self, s: &str) {
+        proc_name = String::from(s);
     }
 
     pub fn get_id(&self) -> u64 {
@@ -94,70 +111,3 @@ pub unsafe extern fn memset(s: *mut u8, c: i32, n: usize) -> *mut u8 {
 }
 
 
-fn load_icode(binary: &mut [u8], size: usize) -> Result<i32, i32> {
-    // create a new PDT, and mm->pgdir= kernel virtual addr of PDT
-    let pgdir = match alloc_page() {
-        Ok(page) => { page2kva(page as *const Page) },
-        Err(_) => { return Err(-1); }
-    }
-
-    let elf = unsafe { ptr::read( (&binary[0]) as *const u8 as *const Elfhdr ) };
-    let ph = unsafe { ptr::read( (&binary[0] as u32 + elf.phoff) as *const u8 as *const Proghdr ) };
-    let phs = unsafe { std::slice::from_raw_parts_mut((&binary[0] as u32 + elf.phoff) as *const u8 as *const Proghdr, elf.e_phnum) };
-    if (elf.e_magic != ELF_MAGIC) {
-        return Err(-2);
-    }
-
-    let perm = 
-    for ph in phs {
-        let mut offset = ph.p_va - align_down(ph.p_va);
-        let mut va = align_down(ph.p_va)
-        let mut bin_off = binary as *mut u8 + ph.p_offset * 8
-        // copy TEXT/DATA section of bianry program
-        if offset > 0 {
-            let page = match pgdir_alloc_page(process.pgdir, offset, ATTRIB_AP_RW_ALL) {
-                Ok(page) => { page2kva(page as *mut Page) },
-                Err(_) => { return Err(-3) }
-            };
-            let size = PGSIZE - offset
-            memcpy(page + offset, bin_off, size);
-            va += PGSIZE;
-            bin_off += size;
-        }
-        let mut end = ph.p_va + ph.p_filesz;
-        loop {
-            if bin_off >= ph.p_filesz {
-                break;
-            }
-            let page = match pgdir_alloc_page(process.pgdir, va, ATTRIB_AP_RW_ALL) {
-                Ok(page) => { page2kva(page as *mut Page) },
-                Err(_) => { return Err(-3) }
-            };
-            let size = if bin_off + PGSIZE >= end {
-                PGSIZE
-            } else {
-                end - bin_off
-            }
-            memcpy(page, bin_off, size)
-            bin_off += PGSIZE;
-            va += PGSIZE;
-        }
-        // build BSS section of binary program
-        end = ph.p_va + ph.p_memsz;
-        loop {
-            if bin_off >= ph.p_memsz {
-                break;
-            }
-            let page = match pgdir_alloc_page(process.pgdir, va, ATTRIB_AP_RW_ALL) {
-                Ok(page) => { page2kva(page as *mut Page) },
-                Err(_) => { return Err(-3) }
-            };
-            memset(page as *mut u8, 0, PGSIZE);
-            va += PGSIZE
-            bin_off += PGSIZE;
-        }
-    }
-
-    // set trapframe
-    
-}

@@ -45,8 +45,12 @@ impl GlobalScheduler {
     /// restoring the next process's trap frame into `tf`. For more details, see
     /// the documentation on `Scheduler::switch()`.
     #[must_use]
-    pub fn switch(&self, new_state: State, tf: &mut TrapFrame) -> Option<Id> {
+    pub fn switch(&self, new_state: State, tf: &mut TrapFrame, allocator: &mut Allocator) -> Option<Id> {
         self.0.lock().as_mut().expect("scheduler uninitialized").switch(new_state, tf)
+    }
+
+    pub fn is_finised(&self, pending_pid: usize) -> bool {
+        self.0.lock().as_mut().expect("scheduler uninitialized").is_finised(pending_pid)
     }
 
     /// Initializes the scheduler and starts executing processes in user space
@@ -143,7 +147,7 @@ impl Scheduler {
     ///
     /// This method blocks until there is a process to switch to, conserving
     /// energy as much as possible in the interim.
-    fn switch(&mut self, new_state: State, tf: &mut TrapFrame) -> Option<Id> {
+    fn switch(&mut self, new_state: State, tf: &mut TrapFrame, allocator: &mut Allocator) -> Option<Id> {
         let mut current = self.processes.pop_front()?;
         let current_id = current.get_id();
         current.trap_frame = Box::new(*tf);
@@ -155,6 +159,7 @@ impl Scheduler {
             if process.is_ready() {
                 self.current = Some(process.get_id() as Id);
                 *tf = *process.trap_frame;
+                USER_ALLOCATOR = &process.allocator;
                 process.state = State::Running;
 
                 // Push process back into queue.
@@ -169,5 +174,14 @@ impl Scheduler {
         }
 
         self.current
+    }
+
+    fn is_finised(&self, pending_pid: usize) -> bool {
+        for process in processes.iter() {
+            if (*process).pid == pending_pid {
+                return false;
+            }
+        }
+        true
     }
 }

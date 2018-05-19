@@ -3,7 +3,7 @@ pub mod page;
 pub mod util;
 
 #[path = "first_fit.rs"]
-mod imp;
+pub mod imp;
 
 #[cfg(test)]
 mod tests;
@@ -48,6 +48,14 @@ impl Allocator {
     }
 }
 
+unsafe impl Allocator {
+    unsafe fn switch_content(allocator: &imp::Allocator) -> &imp::Allocator {
+        let backup = self.0.lock();
+        *self.0.lock() = *allocator;
+        backup
+    }
+}
+
 unsafe impl<'a> Alloc for &'a Allocator {
 
     unsafe fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
@@ -80,6 +88,10 @@ fn memory_map() -> Option<(usize, usize)> {
         }
     }
     None
+}
+
+fn alloc_page_at(allocator: &mut Allocator, va: usize) -> Result<*mut u8, AllocErr> {
+    unsafe { allocator.alloc_at(va, Layout::from_size_align_unchecked(npage * PGSIZE, PGSIZE)) }
 }
 
 fn alloc_page() -> Result<*mut u8, AllocErr> {

@@ -3,9 +3,12 @@ use std;
 use std::mem;
 use allocator::util::*;
 use allocator::linked_list::LinkedList;
-use allocator::page::{PGSIZE, Page, PPN, VPN, KERNEL_PAGES, NPAGE};
+use allocator::page::{PGSIZE, Page, PPN, VPN, KERNEL_PAGES, NPAGE, MAXPA};
 
 use console::kprintln;
+
+pub mut static BACKUP_ALLOCATOR : &Allocator;
+pub mut static USER_ALLOCATOR : &Allocator;
 
 /// A "bump" allocator: allocates memory by bumping a pointer; never frees.
 #[derive(Debug)]
@@ -27,7 +30,25 @@ impl Allocator {
     }
 
     pub fn init_user() {
+        self.base_page = (MAXPA as *mut Page).sub(MAXPA / PGSIZE) as *mut usize as usize;
+        self.base_page = align_down(self.base_page, PGSIZE);
         
+        let npage = self.base_page / PGSIZE;
+
+        let page = unsafe { std::slice::from_raw_parts_mut(self.base_page as *mut usize as *mut Page, npage) };
+        for i in 0..npage {
+            page[i].flags = 0;
+            page[i].property = 0;
+            page[i].set_page_ref(0);
+        }
+        page[0].property = npage as u32;
+        page[0].SetPageProperty();
+        self.n_free += npage as u32;
+        //TODO
+        self.base_paddr = 0;
+        // list_add(&free_list, &(base->page_link));
+        kprintln!("init user_memap: {:x} property: {}", begin, page[0].property);
+        unsafe { self.free_list.push(self.base_page as *mut usize); }
     }
 
     pub fn init_memmap(&mut self, base: usize, npage: usize, begin: usize) {
