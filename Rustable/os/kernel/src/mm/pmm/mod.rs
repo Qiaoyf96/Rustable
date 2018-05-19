@@ -160,8 +160,28 @@ pub fn page_remove(pgdir: *const usize, va: usize, pte: *mut usize) {
     let page = pa2page(pte as usize);
     if (unsafe { &mut *page }).page_ref_dec() <= 0 {
         // free_page(page);
-        unsafe { (&ALLOCATOR).dealloc(pte as *mut u8, Layout::from_size_align_unchecked(PGSIZE, PGSIZE)); }
+        dealloc_page(pte as *mut u8);
     }
     unsafe { *pte = 0; }
     unsafe{ tlb_invalidate(va) };
+}
+
+pub fn pgdir_alloc_page(pgdir: *const usize, va: usize, perm: usize) -> Result<*mut u8, AllocErr> {
+    match alloc_page()) {
+        Ok(page_ptr) => {
+            let page = page_ptr as *mut Page;
+            match page_insert(pgdir, page, va, perm) {
+                Ok(_) => {
+                    return Ok(page_ptr);
+                },
+                Err(_) => {
+                    unsafe { (&ALLOCATOR).dealloc(page_ptr as *mut u8, Layout::from_size_align_unchecked(PGSIZE, PGSIZE)) };
+                    return Err( AllocErr::Unsupported { details: "page insert failed" } );
+                }
+            };
+        },
+        Err(_) => {
+            return Err( AllocErr::Unsupported { details: "alloc page failed" } );
+        }
+    }
 }

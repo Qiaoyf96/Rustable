@@ -6,7 +6,9 @@ pub const PGSIZE: usize = 4096;
 pub const MAXPA: usize = (512 * 1024 * 1024);
 pub const NPAGE: usize = MAXPA / PGSIZE;
 pub const KERNEL_PAGES: usize = 0xFFFFFF0000000000 + 0x01400000;
+
 pub const USTACKTOP: usize = 0x80000000;
+pub const USER_PAGES: usize = 0x01400000;
 // index of page table entry
 pub fn PT0X(va: usize) -> usize { (va >> 39) & 0x01 }
 pub fn PT1X(va: usize) -> usize { (va >> 30) & 0x1FF }
@@ -44,7 +46,7 @@ pub const ATTRINDX_DEVICE: usize = 1 << 2;    // Device-nGnRE
 pub const ATTRINDX_COHERENT: usize = 2 << 2;    // Device-nGnRnE
 
 pub fn page2ppn(page: *const Page) -> usize {
-    return page as *const usize as usize - KERNEL_PAGES;
+    page as *const usize as usize - KERNEL_PAGES
 }
 
 pub fn page2pa(page: *mut Page) -> usize {
@@ -52,8 +54,14 @@ pub fn page2pa(page: *mut Page) -> usize {
 }
 
 pub fn page2kva(page: *const Page) -> usize {
-    return KADDR(page2ppn(page) << PGSHIFT);
+    KADDR(page2ppn(page) << PGSHIFT)
 }
+
+pub fn page2va(page: *const Page) -> usize {
+    (page as *const usize as usize - USER_PAGES) << PGSIZE
+}
+
+
 
 pub fn pa2page(pa: usize) -> *mut Page {
     if PPN(pa) >= NPAGE {

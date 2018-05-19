@@ -42,6 +42,10 @@ impl Allocator {
     pub fn init_memmap(&self, base: usize, npage: usize, begin: usize) {
         self.0.lock().as_mut().expect("allocator uninitialized").init_memmap(base, npage, begin);
     }
+
+    pub fn alloc_at(&self, addr: usize, layout: Layout) -> Result<*mut u8, AllocErr> {
+        self.0.lock().as_mut().expect("allocator uninitialized").alloc_at(addr, layout)
+    }
 }
 
 unsafe impl<'a> Alloc for &'a Allocator {
@@ -77,5 +81,22 @@ fn memory_map() -> Option<(usize, usize)> {
     }
     None
 }
+
+fn alloc_page() -> Result<*mut u8, AllocErr> {
+    alloc_pages(1)
+}
+
+fn dealloc_page(ptr: *mut u8) {
+    dealloc_pages(ptr, 1);
+}
+
+fn alloc_pages(npage: usize) -> Result<*mut u8, AllocErr> {
+    unsafe { (&ALLOCATOR).alloc(Layout::from_size_align_unchecked(npage * PGSIZE, PGSIZE)) }
+}
+
+fn dealloc_pages(ptr: *mut u8, npage: usize) {
+    unsafe { (&ALLOCATOR).dealloc(ptr, Layout::from_size_align_unchecked(npage * PGSIZE, PGSIZE)); }
+}
+
 
 
