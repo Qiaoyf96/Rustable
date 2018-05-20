@@ -1,3 +1,4 @@
+use ALLOCATOR;
 mod irq;
 mod trap_frame;
 pub mod syndrome;
@@ -14,8 +15,9 @@ pub use self::trap_frame::TrapFrame;
 use self::syndrome::Syndrome;
 use self::irq::handle_irq;
 use self::syscall::handle_syscall;
-use shell;
+use allocator::imp::{ USER_ALLOCATOR, BACKUP_ALLOCATOR, Allocator };
 use console::kprintln;
+use std::mem;
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -48,35 +50,39 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    let temp_allocator = &(ALLOCATOR.switch_content(BACKUP_ALLOCATOR));
-    kprintln!("{:?} {:?} {}", info.source, info.kind, esr);
+    kprintln!("{:?} {:?} {:b}", info.source, info.kind, esr);
+    unsafe { ALLOCATOR.switch_content(mem::transmute(BACKUP_ALLOCATOR), mem::transmute(USER_ALLOCATOR)); }
+    kprintln!("finish switch allocator");
+    // kprintln!("{:?} {:?}", info.kind, info.kind==Kind::SError);
     if info.kind == Kind::Synchronous {
+        // kprintln!("syn");
         match Syndrome::from(esr) {
             Syndrome::Brk(i) => {
                 // shell::shell(" [brk]$ ");
                 kprintln!("brk");
                 tf.elr += 4;
-                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(temp_allocator);
+                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
                 return;
             },
             Syndrome::Svc(syscall) => {
                 kprintln!("syscall");
-                handle_syscall(syscall, tf, temp_allocator);
-                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(temp_allocator);
+                handle_syscall(syscall, tf);
+                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
                 return;
             },
             Syndrome::InstructionAbort{kind, level} => {
                 kprintln!("InstructionAbort");
                 do_pgfault(kind, level);
-                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(temp_allocator);
+                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
                 return;
             },
             Syndrome::DataAbort{kind, level} => {
+                kprintln!("DataAbort");
                 do_pgfault(kind, level);
-                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(temp_allocator);
+                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
                 return;
             },
-            _ => {}
+            _ => { kprintln!{"unknown type"}; }
         }
     } else if info.kind == Kind::Irq {
         let controller = Controller::new();
@@ -84,11 +90,12 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
         for interrupt in [Timer1, Timer3, Usb, Gpio0, Gpio1, Gpio2, Gpio3, Uart].iter() {
             if controller.is_pending(*interrupt) {
                 handle_irq(*interrupt, tf);
-                BACKUP_ALLOCATOR = ALLOCATOR.switch_content(USER_ALLOCATOR);
+                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
                 return;
             }
         }
     }
+    kprintln!("halt");
     loop {
         unsafe { asm!("wfe") }
     }

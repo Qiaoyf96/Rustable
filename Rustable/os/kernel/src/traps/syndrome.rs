@@ -64,7 +64,7 @@ pub enum Syndrome {
 impl From<u32> for Syndrome {
     fn from(esr: u32) -> Syndrome {
         use self::Syndrome::*;
-        
+
         let iss = esr & 0xFFFFFF;
 
         match esr >> 26 {

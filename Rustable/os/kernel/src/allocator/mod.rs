@@ -1,4 +1,5 @@
 mod linked_list;
+use ALLOCATOR;
 pub mod page;
 pub mod util;
 
@@ -8,13 +9,19 @@ pub mod imp;
 #[cfg(test)]
 mod tests;
 
-pub use self::page::Page;
+pub use self::page::{Page, PGSIZE};
 
 use mutex::Mutex;
 use alloc::heap::{Alloc, AllocErr, Layout};
 use std::cmp::max;
 
+use std::ptr;
+
+use console::kprintln;
+
 use pi::atags::Atags;
+
+use process::process::utils::memset;
 
 /// Thread-safe (locking) wrapper around a particular memory allocator.
 // #[derive(Debug)]
@@ -46,14 +53,19 @@ impl Allocator {
     pub fn alloc_at(&self, addr: usize, layout: Layout) -> Result<*mut u8, AllocErr> {
         self.0.lock().as_mut().expect("allocator uninitialized").alloc_at(addr, layout)
     }
-}
 
-unsafe impl Allocator {
-    unsafe fn switch_content(allocator: &imp::Allocator) -> &imp::Allocator {
-        let backup = self.0.lock();
-        *self.0.lock() = *allocator;
-        backup
+    pub fn switch_content(&self, alloc_from: *mut imp::Allocator, alloc_to: *mut imp::Allocator) {
+        kprintln!("SWITCH");
+        // if allocator as *const usize as usize == 0 {
+        //     kprintln!("SWITCH");
+        //     return self.0.lock().as_mut().expect("allocator uninitialized") as *const imp::Allocator;
+        // }
+        // let mut backup = self.0.lock();
+        // unsafe { *self.0.lock() = Some(ptr::read(allocator)); }
+        // backup.as_mut().expect("allocator uninitialized") as *const imp::Allocator
+        self.0.lock().as_mut().expect("allocator uninitialized").switch_content(alloc_from, alloc_to);
     }
+
 }
 
 unsafe impl<'a> Alloc for &'a Allocator {
@@ -90,23 +102,22 @@ fn memory_map() -> Option<(usize, usize)> {
     None
 }
 
-fn alloc_page_at(allocator: &mut Allocator, va: usize) -> Result<*mut u8, AllocErr> {
-    unsafe { allocator.alloc_at(va, Layout::from_size_align_unchecked(npage * PGSIZE, PGSIZE)) }
+pub fn alloc_page() -> Result<*mut u8, AllocErr> {
+    let pa = unsafe { (&ALLOCATOR).alloc(Layout::from_size_align_unchecked(PGSIZE, PGSIZE)).expect("alloc page failed") };
+    unsafe { memset(pa as *mut u8, 0, PGSIZE); };
+    Ok(pa)
 }
 
-fn alloc_page() -> Result<*mut u8, AllocErr> {
-    alloc_pages(1)
-}
-
-fn dealloc_page(ptr: *mut u8) {
+pub fn dealloc_page(ptr: *mut u8) {
     dealloc_pages(ptr, 1);
 }
 
-fn alloc_pages(npage: usize) -> Result<*mut u8, AllocErr> {
+pub fn alloc_pages(npage: usize) -> Result<*mut u8, AllocErr> {
     unsafe { (&ALLOCATOR).alloc(Layout::from_size_align_unchecked(npage * PGSIZE, PGSIZE)) }
+
 }
 
-fn dealloc_pages(ptr: *mut u8, npage: usize) {
+pub fn dealloc_pages(ptr: *mut u8, npage: usize) {
     unsafe { (&ALLOCATOR).dealloc(ptr, Layout::from_size_align_unchecked(npage * PGSIZE, PGSIZE)); }
 }
 

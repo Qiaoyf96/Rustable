@@ -248,7 +248,7 @@ fn handle_ls(mut args: &[&str], working_dir: &PathBuf) {
         }
     }
     kprintln!("4");
-    use std::path::Display;
+    // use std::path::Display;
     kprintln!("{}", dir.as_path().display());
     let entry_result = FILE_SYSTEM.open(dir.as_path());
     kprintln!("5");
@@ -319,3 +319,43 @@ fn exit() {
     jump_to(BOOTLOADER_START_ADDR as *mut u8);
 }
 
+
+// fn handle_cat(args: &[&str], working_dir: &PathBuf) {
+//     kprintln!("cat");
+//     if args.len() != 1 {
+//         kprintln!("Usage:");
+//         kprintln!("cat <file>");
+//         kprintln!();
+//         return;
+//     }
+
+//     kprintln!("cat");
+//     let mut dir = working_dir.clone();
+//     dir.push(args[0]);
+
+//     kprintln!("cat-b");
+//     let entry_result = FILE_SYSTEM.open(dir.as_path());
+//     kprintln!("cat-a");
+//     if entry_result.is_err() {
+//         kprintln!("Path not found.");
+//         return;
+//     }
+
+//     let entry = entry_result.unwrap();
+//     if let Some(ref mut file) = entry.into_file() {
+//         loop {
+//             use std::io::Read;
+
+//             let mut buffer = [0u8; 512];
+//             match file.read(&mut buffer) {
+//                 Ok(0) => break,
+//                 Ok(_) => kprint!("{}", String::from_utf8_lossy(&buffer)),
+//                 Err(e) => kprint!("Failed to read file: {:?}", e)
+//             }
+//         }
+
+//         kprintln!("");
+//     } else {
+//         kprintln!("Not a file.");
+//     }
+// }

@@ -3,21 +3,16 @@ use std::collections::VecDeque;
 use mutex::Mutex;
 use process::{Process, State, Id};
 use traps::TrapFrame;
-use pi::interrupt::{Interrupt, Controller};
-use pi::timer::tick_in;
+// use pi::interrupt::{Interrupt, Controller};
+// use pi::timer::tick_in;
 
 use aarch64;
 
 use console::kprintln;
 
-use shell_thread;
-use shell_thread_2;
-use std::mem;
+use allocator::imp::{Allocator, USER_ALLOCATOR};
 
-use aarch64::{get_ttbr0, get_ttbr1, get_pc};
-
-use allocator::page::PADDR;
-
+use process::syscall::{sys_exec};
 // use console;
 
 /// The `tick` time.
@@ -45,12 +40,16 @@ impl GlobalScheduler {
     /// restoring the next process's trap frame into `tf`. For more details, see
     /// the documentation on `Scheduler::switch()`.
     #[must_use]
-    pub fn switch(&self, new_state: State, tf: &mut TrapFrame, allocator: &mut Allocator) -> Option<Id> {
+    pub fn switch(&self, new_state: State, tf: &mut TrapFrame) -> Option<Id> {
         self.0.lock().as_mut().expect("scheduler uninitialized").switch(new_state, tf)
     }
 
-    pub fn is_finised(&self, pending_pid: usize) -> bool {
-        self.0.lock().as_mut().expect("scheduler uninitialized").is_finised(pending_pid)
+    pub fn is_finished(&self, pending_pid: usize) -> bool {
+        self.0.lock().as_mut().expect("scheduler uninitialized").is_finished(pending_pid)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.lock().as_mut().expect("scheduler uninitialized").is_empty()
     }
 
     /// Initializes the scheduler and starts executing processes in user space
@@ -58,41 +57,42 @@ impl GlobalScheduler {
     /// not return under normal conditions.
     pub fn start(&self) {
         *self.0.lock() = Some(Scheduler::new());
-        let mut process = Process::new().unwrap();
-        process.trap_frame.ttbr0 = 0x01000000;
-        process.trap_frame.sp = process.stack.top().as_u64();
-        process.trap_frame.elr = shell_thread as *mut u8 as u64;
-        process.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
-        let tf = process.trap_frame.clone();
-        self.add(process);
+        // let mut process = Process::new().unwrap();
+        // process.trap_frame.ttbr0 = 0x01000000;
+        // process.trap_frame.sp = process.stack.top().as_u64();
+        // process.trap_frame.elr = shell_thread as *mut u8 as u64;
+        // process.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
+        // let tf = process.trap_frame.clone();
+        // self.add(process);
 
-        let mut process2 = Process::new().unwrap();
-        process2.trap_frame.sp = process2.stack.top().as_u64();
-        process2.trap_frame.elr = shell_thread_2 as *mut u8 as u64;
-        // process2.trap_frame.spsr = 0b1101_00_0000; // To EL 0, currently only unmasking IRQ
-        self.add(process2);
+        // let mut process2 = Process::new().unwrap();
+        // process2.trap_frame.sp = process2.stack.top().as_u64();
+        // process2.trap_frame.elr = shell_thread_2 as *mut u8 as u64;
+        // // process2.trap_frame.spsr = 0b1101_00_0000; // To EL 0, currently only unmasking IRQ
+        // self.add(process2);
 
-        // Controller::new().enable(Interrupt::Timer1);
-        // tick_in(TICK);
+        // // Controller::new().enable(Interrupt::Timer1);
+        // // tick_in(TICK);
 
-        // let tf_addr = Box::into_raw(tf) as *mut usize as usize;
-        // kprintln!("trapframe: {:x}", tf_addr);
-        unsafe { kprintln!("ttbr0 ttbr1: {:x} {:x}", get_ttbr0(), get_ttbr1()); }
-        unsafe { kprintln!("pc: {:x}", get_pc()); }
-        kprintln!("=========== ready to switch to user process: {:x} ===========", PADDR(shell_thread as *mut u8 as usize) as u64);
+        // // let tf_addr = Box::into_raw(tf) as *mut usize as usize;
+        // // kprintln!("trapframe: {:x}", tf_addr);
+        // unsafe { kprintln!("ttbr0 ttbr1: {:x} {:x}", get_ttbr0(), get_ttbr1()); }
+        // unsafe { kprintln!("pc: {:x}", get_pc()); }
+        // kprintln!("=========== ready to switch to user process: {:x} ===========", PADDR(shell_thread as *mut u8 as usize) as u64);
         
-        // shell_thread();
-        kprintln!("instruction: {:x}", unsafe { *(shell_thread as *mut u32) });
+        // // shell_thread();
+        // kprintln!("instruction: {:x}", unsafe { *(shell_thread as *mut u32) });
 
-        unsafe {
-            asm!("mov sp, $0
-              bl context_restore
-              adr lr, _start
-              mov sp, lr
-              mov lr, xzr
-              eret" :: "r"(tf) :: "volatile");
-        };
+        // unsafe {
+        //     asm!("mov sp, $0
+        //       bl context_restore
+        //       adr lr, _start
+        //       mov sp, lr
+        //       mov lr, xzr
+        //       eret" :: "r"(tf) :: "volatile");
+        // };
         
+        sys_exec(1);
         kprintln!("no eret");
     }
 }
@@ -147,7 +147,7 @@ impl Scheduler {
     ///
     /// This method blocks until there is a process to switch to, conserving
     /// energy as much as possible in the interim.
-    fn switch(&mut self, new_state: State, tf: &mut TrapFrame, allocator: &mut Allocator) -> Option<Id> {
+    fn switch(&mut self, new_state: State, tf: &mut TrapFrame) -> Option<Id> {
         let mut current = self.processes.pop_front()?;
         let current_id = current.get_id();
         current.trap_frame = Box::new(*tf);
@@ -159,7 +159,7 @@ impl Scheduler {
             if process.is_ready() {
                 self.current = Some(process.get_id() as Id);
                 *tf = *process.trap_frame;
-                USER_ALLOCATOR = &process.allocator;
+                unsafe { USER_ALLOCATOR = &mut *(&mut process.allocator as *mut Allocator); }
                 process.state = State::Running;
 
                 // Push process back into queue.
@@ -176,12 +176,16 @@ impl Scheduler {
         self.current
     }
 
-    fn is_finised(&self, pending_pid: usize) -> bool {
-        for process in processes.iter() {
+    fn is_finished(&self, pending_pid: usize) -> bool {
+        for process in self.processes.iter() {
             if (*process).pid == pending_pid {
                 return false;
             }
         }
         true
+    }
+    
+    fn is_empty(&self) -> bool {
+        self.processes.is_empty()
     }
 }

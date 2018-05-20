@@ -43,7 +43,7 @@ impl PageTable {
 pub fn boot_alloc_page() -> Result<*mut PageTable, AllocErr> {
     let layout = unsafe { Layout::from_size_align_unchecked(PGSIZE, PGSIZE)} ;
     match unsafe {(&ALLOCATOR).alloc(layout)} {
-        Ok(p) => Ok( unsafe { p as *mut PageTable } ),
+        Ok(p) => Ok( p as *mut PageTable ),
         Err(err) => Err(err),
     }
 }

@@ -53,8 +53,8 @@ go_kmain:
 
 context_save:
     // FIXME: Save the remaining context to the stack.
-    mrs     x0, TTBR0_EL1
-    str     x0, [SP, #-8]!
+    mrs     x1, TTBR0_EL1
+    str     x1, [SP, #-8]!
 
     stp     x29, lr, [SP, #-16]!
     stp     x27, x28, [SP, #-16]!

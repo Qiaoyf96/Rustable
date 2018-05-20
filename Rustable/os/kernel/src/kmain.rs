@@ -50,7 +50,7 @@ pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
 use process::GlobalScheduler;
 use pi::timer::{spin_sleep_ms};
 
-use process::sys_sleep;
+use process::syscall::sys_sleep;
 
 pub extern "C" fn shell_thread() {
     // unsafe { console::kprintln!("pc: {:x}", aarch64::get_pc()); }
@@ -147,17 +147,26 @@ pub extern "C" fn kmain() {
     use mm::vm::{get_pte};
     use aarch64::get_ttbr0;
     let ttbr0 = unsafe { get_ttbr0() };
-    page_remove(ttbr0 as *const usize, 8, get_pte(ttbr0 as *const usize , 8, false).expect(""));
-    let illegal_addr: usize = 8;
+    console::kprintln!("ttbr: {:x}", ttbr0);
     
-    let illegal_val = unsafe { *(illegal_addr as *const usize) };
-    console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
-    let illegal_val = unsafe { *(illegal_addr as *const usize) };
-    console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
+    // unsafe { asm!("svc 3" :::: "volatile"); }
+    // page_remove(ttbr0 as *const usize, 0x15c1000, get_pte(ttbr0 as *const usize , 0x15c1000, false).expect(""));
+    // let illegal_addr: usize = 0x14c1008;
     
-    unsafe { asm!("svc 2" :::: "volatile"); }
+    // let illegal_val = unsafe { *(illegal_addr as *const usize) };
+    // console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
+    // let illegal_val = unsafe { *(illegal_addr as *const usize) };
+    // console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
     
-    console::kprintln!("===schedule===");
-    SCHEDULER.start();
-    // shell::shell("Rainable: ");
+    
+    // console::kprintln!("===schedule===");
+    // SCHEDULER.start();
+    shell::shell("Rainable: ");
+    console::kprintln!("========================end===========================");
+    loop {
+        // shell::shell("# ");
+        aarch64::nop();
+        // sys_sleep(1000);
+        // console::kprintln!("thread 2");
+    }
 }

@@ -1,12 +1,14 @@
 use traps::syndrome::Fault;
 use console::kprintln;
-use aarch64::{get_far, get_ttbr0, tlb_invalidate};
+use aarch64::{get_far, get_ttbr0};
 use mm::pmm::{page_insert};
 use mm::vm::{get_pte};
-use allocator::page::{Page, ATTRIB_AP_RW_ALL, PGSIZE, ATTRIB_AP_RO_ALL, pa2page};
+use allocator::page::{ATTRIB_AP_RW_ALL, PGSIZE, ATTRIB_AP_RO_ALL, pa2page};
 use ALLOCATOR;
 use alloc::allocator::Alloc;
-use alloc::heap::{AllocErr, Layout};
+use alloc::heap::Layout;
+
+use allocator::alloc_page;
 
 pub fn do_pgfault(kind: Fault, level: u8) {
     let va = unsafe { get_far() };
@@ -22,7 +24,8 @@ pub fn do_pgfault(kind: Fault, level: u8) {
                 kprintln!("Succeed in get_pte, but it is not a copy-on-write page at va: {:x}\n", va);
                 return;
             }
-            let paddr = unsafe{ (&ALLOCATOR).alloc(Layout::from_size_align_unchecked(PGSIZE, PGSIZE)).expect("cannot alloc page") };
+            kprintln!("~~~");
+            let paddr = alloc_page().expect("cannot alloc page");
             page_insert( ttbr0 , pa2page(paddr as usize), va, ATTRIB_AP_RW_ALL);
             
         },

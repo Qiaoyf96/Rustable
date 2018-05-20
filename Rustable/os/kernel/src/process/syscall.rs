@@ -1,3 +1,5 @@
+use console::kprintln;
+
 pub fn sys_sleep(ms: u32) -> u32 {
     let error: u64;
     let result: u32;

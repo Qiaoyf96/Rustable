@@ -1,8 +1,10 @@
+mod exec;
+mod sleep;
+
 use traps::TrapFrame;
-use process::State;
-use process::Process;
-use pi::timer::current_time;
-use SCHEDULER;
+
+use self::exec::do_exec;
+use self::sleep::sleep;
 // use console;
 
 /// Sleep for `ms` milliseconds.
