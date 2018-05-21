@@ -120,6 +120,7 @@ pub fn shell(prefix: &str) -> ! {
                     "cd" => handle_cd(&command.args[1..], &mut working_dir),
                     "ls" => handle_ls(&command.args[1..], &mut working_dir),
                     "cat" => handle_cat(&command.args[1..], &mut working_dir),
+                    "cpy" => handle_cpy(&command.args[1..], &mut working_dir),
                     "exit" => exit(),
                     unknown => {
                         kprint!("unknown command: {}\n", unknown);
@@ -320,42 +321,54 @@ fn exit() {
 }
 
 
-// fn handle_cat(args: &[&str], working_dir: &PathBuf) {
-//     kprintln!("cat");
-//     if args.len() != 1 {
-//         kprintln!("Usage:");
-//         kprintln!("cat <file>");
-//         kprintln!();
-//         return;
-//     }
+const 
+fn handle_cpy(args: &[&str], working_dir: &PathBuf) {
+    kprintln!("cpy");
+    if args.len() != 1 {
+        kprintln!("Usage:");
+        kprintln!("cpy <file>");
+        kprintln!();
+        return;
+    }
 
-//     kprintln!("cat");
-//     let mut dir = working_dir.clone();
-//     dir.push(args[0]);
+    let mut dir = working_dir.clone();
+    dir.push(args[0]);
 
-//     kprintln!("cat-b");
-//     let entry_result = FILE_SYSTEM.open(dir.as_path());
-//     kprintln!("cat-a");
-//     if entry_result.is_err() {
-//         kprintln!("Path not found.");
-//         return;
-//     }
+    let entry_result = FILE_SYSTEM.open(dir.as_path());
 
-//     let entry = entry_result.unwrap();
-//     if let Some(ref mut file) = entry.into_file() {
-//         loop {
-//             use std::io::Read;
+    if entry_result.is_err() {
+        kprintln!("Path not found.");
+        return;
+    }
 
-//             let mut buffer = [0u8; 512];
-//             match file.read(&mut buffer) {
-//                 Ok(0) => break,
-//                 Ok(_) => kprint!("{}", String::from_utf8_lossy(&buffer)),
-//                 Err(e) => kprint!("Failed to read file: {:?}", e)
-//             }
-//         }
+    let mut pa = alloc_pages(10);
+    let entry = entry_result.unwrap();
+    if let Some(ref mut file) = entry.into_file() {
+        loop {
+            use std::io::Read;
 
-//         kprintln!("");
-//     } else {
-//         kprintln!("Not a file.");
-//     }
-// }
+            let mut buffer = [0u8; 512];
+            match file.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(_) => {
+                    kprint!("{}", String::from_utf8_lossy(&buffer))
+                    memcpy(pa, &bufferm 512);
+                    pa = pa.add(512);
+                },
+                Err(e) => kprint!("Failed to read file: {:?}", e)
+            }
+        }
+
+        kprintln!("");
+    } else {
+        kprintln!("Not a file.");
+    }
+}
+
+fn memcpy(dest: *mut u8, buf: &[u8], n:size) {
+    let mut i = 0;
+    while i < n {
+        unsafe { *dest.offset(i as isize) = buf[i]; }
+        i += 1;
+    }
+}
