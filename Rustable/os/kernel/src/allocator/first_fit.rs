@@ -224,7 +224,7 @@ impl Allocator {
                 self.n_free -= npage as u32;
                 
                 let offset = (((alloc_page as *const Page as *mut usize as usize) - self.base_page) / mem::size_of::<Page>()) * PGSIZE;
-                kprintln!("alloc addr: {:x}", offset + self.base_paddr);
+                kprintln!("alloc addr at: {:x}", offset + self.base_paddr);
                 // kprintln!("offset: {:x} base_page: {:x} base_paddr: {:x}", offset, self.base_page, self.base_paddr);
                 return Ok((offset + self.base_paddr) as *mut usize as * mut u8);
             }

@@ -1,5 +1,6 @@
 use allocator::linked_list::LinkedList;
 use std;
+use std::mem;
 
 // ARM definitions.
 pub const PGSIZE: usize = 4096;
@@ -49,7 +50,7 @@ pub const ATTRINDX_DEVICE: usize = 1 << 2;    // Device-nGnRE
 pub const ATTRINDX_COHERENT: usize = 2 << 2;    // Device-nGnRnE
 
 pub fn page2ppn(page: *const Page) -> usize {
-    page as *const usize as usize - KERNEL_PAGES
+    (page as *const usize as usize - KERNEL_PAGES) / mem::size_of::<Page>()
 }
 
 pub fn page2pa(page: *mut Page) -> usize {
@@ -69,7 +70,7 @@ pub fn pa2page(pa: usize) -> *mut Page {
 }
 
 pub fn page2va(page: *const Page) -> usize {
-    (page as *const usize as usize - USER_PAGES) << PGSHIFT
+    ((page as *const usize as usize - USER_PAGES) / mem::size_of::<Page>()) << PGSHIFT
 }
 
 pub fn user_pa2page(pa: usize) -> *mut Page {

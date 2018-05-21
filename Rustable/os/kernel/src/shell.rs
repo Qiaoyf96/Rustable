@@ -101,7 +101,8 @@ fn read_line<'a>(buf_vec: &'a mut StackVec<'a, u8>) -> &'a str {
 }
 
 pub fn copy_elf() {
-    handle_cpy("USER");
+    let mut working_dir = PathBuf::from("/");
+    handle_cpy("USER", &mut working_dir);
 }
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
@@ -124,8 +125,8 @@ pub fn shell(prefix: &str) -> ! {
                     "cd" => handle_cd(&command.args[1..], &mut working_dir),
                     "ls" => handle_ls(&command.args[1..], &mut working_dir),
                     "cat" => handle_cat(&command.args[1..], &mut working_dir),
-                    "cpy" => handle_cpy(&command.args[1..], &mut working_dir),
-                    "v" => handle_v(),
+                    // "cpy" => handle_cpy(&command.args[1..], &mut working_dir),
+                    // "v" => handle_v(),
                     "exit" => exit(),
                     unknown => {
                         kprint!("unknown command: {}\n", unknown);
@@ -326,17 +327,11 @@ fn exit() {
 }
 
 
-fn handle_cpy(args: &[&str], working_dir: &PathBuf) {
+fn handle_cpy(args: &str, working_dir: &PathBuf) {
     kprintln!("cpy");
-    if args.len() != 1 {
-        kprintln!("Usage:");
-        kprintln!("cpy <file>");
-        kprintln!();
-        return;
-    }
 
     let mut dir = working_dir.clone();
-    dir.push(args[0]);
+    dir.push(args);
 
     let entry_result = FILE_SYSTEM.open(dir.as_path());
 

@@ -51,6 +51,7 @@ use process::GlobalScheduler;
 use pi::timer::{spin_sleep_ms};
 
 use process::syscall::sys_sleep;
+use shell::copy_elf;
 
 pub extern "C" fn shell_thread() {
     // unsafe { console::kprintln!("pc: {:x}", aarch64::get_pc()); }
@@ -161,7 +162,7 @@ pub extern "C" fn kmain() {
     
     
     // console::kprintln!("===schedule===");
-    // SCHEDULER.start();
+    SCHEDULER.start();
     // shell::shell("Rainable: ");
     // console::kprintln!("========================end===========================");
     // loop {
