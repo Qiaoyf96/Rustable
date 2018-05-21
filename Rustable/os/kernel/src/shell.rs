@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use pi;
 use FILE_SYSTEM;
 use fat32::traits::{Dir, Entry, FileSystem, Timestamp, Metadata};
-use allocator::alloc_pages;
+use allocator::alloc_page;
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
 enum Error {
@@ -341,7 +341,7 @@ fn handle_cpy(args: &[&str], working_dir: &PathBuf) {
         return;
     }
 
-    let mut pa = alloc_pages(10).expect("alloc pages failed");
+    let mut pa = alloc_page().expect("alloc pages failed");
     kprint!("Elf addr: {:x}", pa as usize);
     let entry = entry_result.unwrap();
     if let Some(ref mut file) = entry.into_file() {
