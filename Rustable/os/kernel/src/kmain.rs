@@ -149,6 +149,7 @@ pub extern "C" fn kmain() {
     let ttbr0 = unsafe { get_ttbr0() };
     console::kprintln!("ttbr: {:x}", ttbr0);
     
+    copy_elf();
     // unsafe { asm!("svc 3" :::: "volatile"); }
     // page_remove(ttbr0 as *const usize, 0x15c1000, get_pte(ttbr0 as *const usize , 0x15c1000, false).expect(""));
     // let illegal_addr: usize = 0x14c1008;
@@ -161,12 +162,12 @@ pub extern "C" fn kmain() {
     
     // console::kprintln!("===schedule===");
     // SCHEDULER.start();
-    shell::shell("Rainable: ");
-    console::kprintln!("========================end===========================");
-    loop {
-        // shell::shell("# ");
-        aarch64::nop();
-        // sys_sleep(1000);
-        // console::kprintln!("thread 2");
-    }
+    // shell::shell("Rainable: ");
+    // console::kprintln!("========================end===========================");
+    // loop {
+    //     // shell::shell("# ");
+    //     aarch64::nop();
+    //     // sys_sleep(1000);
+    //     // console::kprintln!("thread 2");
+    // }
 }

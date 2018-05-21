@@ -13,9 +13,9 @@ pub fn do_exec(ms: u32, tf: &mut TrapFrame) {
     process.proc_init();
     process.trap_frame.ttbr0 = 0x01000000;
     // process.trap_frame.sp = process.stack.top().as_u64();
-    process.trap_frame.elr = shell_thread as *mut u8 as u64;
+    process.trap_frame.elr = (0x150f000) as *mut u8 as u64;
     process.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
-    process.load_icode(shell_thread as *mut u8, 0);
+    process.load_icode((0x150f000)  as *mut u8, 0);
     
     if SCHEDULER.is_empty() {
         let tf = process.trap_frame.clone();

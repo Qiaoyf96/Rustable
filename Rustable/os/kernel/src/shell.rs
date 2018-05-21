@@ -100,6 +100,10 @@ fn read_line<'a>(buf_vec: &'a mut StackVec<'a, u8>) -> &'a str {
     std::str::from_utf8(buf_vec.as_slice()).unwrap_or("")
 }
 
+pub fn copy_elf() {
+    handle_cpy("USER");
+}
+
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns: it is perpetually in a shell loop.
 pub fn shell(prefix: &str) -> ! {
