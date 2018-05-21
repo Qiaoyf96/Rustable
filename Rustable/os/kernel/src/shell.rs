@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use pi;
 use FILE_SYSTEM;
 use fat32::traits::{Dir, Entry, FileSystem, Timestamp, Metadata};
-
+use allocator::alloc_pages;
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
 enum Error {
@@ -121,6 +121,7 @@ pub fn shell(prefix: &str) -> ! {
                     "ls" => handle_ls(&command.args[1..], &mut working_dir),
                     "cat" => handle_cat(&command.args[1..], &mut working_dir),
                     "cpy" => handle_cpy(&command.args[1..], &mut working_dir),
+                    "v" => handle_v(),
                     "exit" => exit(),
                     unknown => {
                         kprint!("unknown command: {}\n", unknown);
@@ -321,7 +322,6 @@ fn exit() {
 }
 
 
-const 
 fn handle_cpy(args: &[&str], working_dir: &PathBuf) {
     kprintln!("cpy");
     if args.len() != 1 {
@@ -341,7 +341,8 @@ fn handle_cpy(args: &[&str], working_dir: &PathBuf) {
         return;
     }
 
-    let mut pa = alloc_pages(10);
+    let mut pa = alloc_pages(10).expect("alloc pages failed");
+    kprint!("Elf addr: {:x}", pa as usize);
     let entry = entry_result.unwrap();
     if let Some(ref mut file) = entry.into_file() {
         loop {
@@ -351,9 +352,9 @@ fn handle_cpy(args: &[&str], working_dir: &PathBuf) {
             match file.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(_) => {
-                    kprint!("{}", String::from_utf8_lossy(&buffer))
-                    memcpy(pa, &bufferm 512);
-                    pa = pa.add(512);
+                    kprint!("{}", String::from_utf8_lossy(&buffer));
+                    memcpy(pa, &buffer, 512);
+                    pa = unsafe{ pa.add(512) };
                 },
                 Err(e) => kprint!("Failed to read file: {:?}", e)
             }
@@ -365,10 +366,18 @@ fn handle_cpy(args: &[&str], working_dir: &PathBuf) {
     }
 }
 
-fn memcpy(dest: *mut u8, buf: &[u8], n:size) {
+fn memcpy(dest: *mut u8, buf: &[u8], n: usize) {
     let mut i = 0;
     while i < n {
         unsafe { *dest.offset(i as isize) = buf[i]; }
         i += 1;
     }
+}
+
+
+fn handle_v() {
+    let pa = 0x150f000;
+    let bits = unsafe { std::slice::from_raw_parts_mut(pa as *mut u8, 100) };
+    kprint!("{}", String::from_utf8_lossy(&bits));
+    kprintln!("");
 }

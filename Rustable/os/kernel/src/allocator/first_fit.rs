@@ -130,9 +130,9 @@ impl Allocator {
     /// size or alignment constraints (`AllocError::Unsupported`).
     pub fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
         let npage = align_up(layout.size(), PGSIZE) / PGSIZE;
-        kprintln!("try alloc: {} {}", npage, self.n_free);
+        // kprintln!("try alloc: {} {}", npage, self.n_free);
         if npage as u32 > self.n_free {
-            kprintln!("n_free: {}, npage: {}", self.n_free, npage);
+            // kprintln!("n_free: {}, npage: {}", self.n_free, npage);
             return Err( AllocErr::Exhausted { request: layout } );
         }
         
@@ -140,7 +140,7 @@ impl Allocator {
         let mut prev = None;
         for i in self.free_list.iter_mut() {
             let mut p = unsafe { &mut *(i.value() as *mut Page) };
-            kprintln!("loop page: {:x} property: {}", p as *mut Page as *mut usize as usize, p.property);
+            // kprintln!("loop page: {:x} property: {}", p as *mut Page as *mut usize as usize, p.property);
             if p.property >= npage as u32 {
                 page = Some(p);
                 break;
@@ -151,7 +151,7 @@ impl Allocator {
         match page {
             Some(page) => {
                 let mut page_addr = page as *const Page as *mut usize;
-                kprintln!("found page: {:x}, pa: {:x}", page_addr as usize, page2kva(page as *const Page));
+                // kprintln!("found page: {:x}, pa: {:x}", page_addr as usize, page2kva(page as *const Page));
                 if page.property > npage as u32 {
                     
                     let p = unsafe { &mut *((page_addr as usize+ npage * mem::size_of::<Page>()) as *mut Page) };
@@ -170,9 +170,9 @@ impl Allocator {
                 page.ClearPageProperty();
                 
                 let offset = (((page as *const Page as *mut usize as usize) - self.base_page) / mem::size_of::<Page>()) * PGSIZE;
-                kprintln!("PPN: {:x}", (page as *const Page as *mut usize as usize) - self.base_page);
-                kprintln!("alloc addr: {:x}", offset + self.base_paddr);
-                kprintln!("offset: {:x} base_page: {:x} base_paddr: {:x}", offset, self.base_page, self.base_paddr);
+                // kprintln!("PPN: {:x}", (page as *const Page as *mut usize as usize) - self.base_page);
+                // kprintln!("alloc addr: {:x}", offset + self.base_paddr);
+                // kprintln!("offset: {:x} base_page: {:x} base_paddr: {:x}", offset, self.base_page, self.base_paddr);
                 
                 return Ok((offset + self.base_paddr) as *mut usize as * mut u8);
             }
@@ -234,7 +234,7 @@ impl Allocator {
 
     pub fn dealloc(&mut self, _ptr: *mut u8, _layout: Layout) {
         // nothing
-        kprintln!("dealloc {:x} page: {:x}", _ptr as *mut usize as usize, pa2page(_ptr as *mut usize as usize) as *mut usize as usize);
+        // kprintln!("dealloc {:x} page: {:x}", _ptr as *mut usize as usize, pa2page(_ptr as *mut usize as usize) as *mut usize as usize);
         let npage = align_up(_layout.size(), PGSIZE) / PGSIZE;
 
         let mut pages = unsafe { std::slice::from_raw_parts_mut(KERNEL_PAGES as *mut Page, NPAGE) };
@@ -257,14 +257,14 @@ impl Allocator {
         let mut base_page = unsafe { &mut *(base_page_addr as *mut Page) };
         let mut next_prev = None;
         
-        kprintln!("base_page_addr: {:x}", base_page_addr);
+        // kprintln!("base_page_addr: {:x}", base_page_addr);
         for i in self.free_list.iter_mut() {
             let mut p = unsafe { &mut *(i.value() as *mut Page) };
-            kprintln!("iter page: {:x}. base: offset = {:x}, property = {}, pagesize = {}", i.value() as usize, mem::size_of::<Page>() * base_page.property as usize, base_page.property, mem::size_of::<Page>());
+            // kprintln!("iter page: {:x}. base: offset = {:x}, property = {}, pagesize = {}", i.value() as usize, mem::size_of::<Page>() * base_page.property as usize, base_page.property, mem::size_of::<Page>());
             if base_page_addr + mem::size_of::<Page>() * base_page.property as usize == i.value() as usize {
                 base_page.property += p.property;
                 p.ClearPageProperty();
-                kprintln!("found next");
+                // kprintln!("found next");
                 next = true;
                 break;
             }
@@ -281,11 +281,11 @@ impl Allocator {
         
         for i in self.free_list.iter_mut() {
             let mut p = unsafe { &mut *(i.value() as *mut Page) };
-            kprintln!("iter page: {:x}, offset = {:x}, property = {}, pagesize = {}", i.value() as usize, mem::size_of::<Page>() * p.property as usize, p.property, mem::size_of::<Page>());
+            // kprintln!("iter page: {:x}, offset = {:x}, property = {}, pagesize = {}", i.value() as usize, mem::size_of::<Page>() * p.property as usize, p.property, mem::size_of::<Page>());
             if i.value() as usize + mem::size_of::<Page>() * p.property as usize == base_page_addr {
                 p.property += base_page.property;
                 base_page.ClearPageProperty();
-                kprintln!("found prev");
+                // kprintln!("found prev");
                 prev = true;
                 break;
             }
@@ -295,7 +295,7 @@ impl Allocator {
             unsafe{ self.free_list.push(base_page_addr as *mut usize) };
         } 
         self.n_free += npage as u32;
-        kprintln!("dealloc ed");
+        // kprintln!("dealloc ed");
     }
     
     pub fn switch_content(&mut self, alloc_from: *mut Allocator, alloc_to: *mut Allocator) {
