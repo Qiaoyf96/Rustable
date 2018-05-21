@@ -116,12 +116,14 @@ pub fn get_pte(pgdir_addr: *const usize, va: usize, create: bool) -> Result<*mut
     // kprintln!("virtual address: {:x}", va);
     // kprintln!("FREEMEM: {:x}", unsafe { FREEMEM });
     
-    let mut pgtable0_entry_ptr = &mut pgdir[PT0X(va)];
+    let mut pgtable0_entry_ptr = pgdir_addr as *mut usize;
     // kprintln!("pgtable0: {:x} {:x}", PT0X(va), unsafe{ *pgtable0_entry_ptr });
-    let mut pgtable1 = PTE_ADDR(*pgtable0_entry_ptr) + PT1X(va) * 8;
-    if (*pgtable0_entry_ptr & PTE_V) == 0 && create == true {
+    let mut pgtable1_entry_ptr = &mut pgdir[PT1X(va)];
+    // let mut pgtable1 = 
+    let mut pgtable1 = PTE_ADDR(unsafe { *pgtable0_entry_ptr }) + PT1X(va) * 8;
+    if (unsafe { *pgtable0_entry_ptr } & PTE_V) == 0 && create == true {
         pgtable1 = alloc_page().expect("cannot alloc page") as usize;
-        *pgtable0_entry_ptr = pgtable1 | PTE_V;
+        unsafe { *pgtable0_entry_ptr = pgtable1 | PTE_V };
         pgtable1 += PT1X(va) * 8;
     }
     // kprintln!("pgtable1: {:x} {:x}", PT1X(va), pgtable1);

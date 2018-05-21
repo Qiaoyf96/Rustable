@@ -18,7 +18,7 @@ use self::syscall::handle_syscall;
 use allocator::imp::{ USER_ALLOCATOR, BACKUP_ALLOCATOR, Allocator };
 use console::kprintln;
 use std::mem;
-use aarch64::get_ttbr0;
+use aarch64::{get_ttbr0, tlb_invalidate};
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -51,6 +51,13 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
+    let mut ttbr0 = unsafe { get_ttbr0() };
+    unsafe {
+        asm!("ldr lr, =0x1000000
+            msr ttbr0_el1, lr":::::"volatile");
+    };
+    tlb_invalidate(0);
+    kprintln!("ttbr: {:x}", ttbr0);
     kprintln!("{:?} {:?} {:b}", info.source, info.kind, esr);
     unsafe { ALLOCATOR.switch_content(mem::transmute(BACKUP_ALLOCATOR), mem::transmute(USER_ALLOCATOR)); }
     kprintln!("finish switch allocator");
@@ -73,10 +80,7 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
             },
             Syndrome::InstructionAbort{kind, level} => {
                 kprintln!("InstructionAbort");
-
-                kprintln!("ttbr0: {:x}", unsafe { get_ttbr0() });
-
-                // do_pgfault(kind, level);
+                do_pgfault(kind, level);
                 unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
                 return;
             },

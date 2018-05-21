@@ -8,7 +8,10 @@ use allocator::imp::Allocator;
 use allocator::util::{align_down};
 use allocator::{alloc_page};
 use mm::pmm::user_pgdir_alloc_page;
-use allocator::page::{ Page, PGSIZE, USTACKTOP, PADDR, page2kva, page2va, UXN, PXN, ATTRIB_AP_RW_ALL, KADDR };
+use allocator::page::{ Page, PGSIZE, USTACKTOP, PADDR, page2kva, page2va, ATTRIB_AP_RW_ALL, KADDR };
+
+pub const PXN: usize = 0x1 << 53;
+pub const UXN: usize = 0x0 << 54;
 
 use self::utils::{memset, memcpy};
 use process::elf::{Elfhdr, Proghdr};

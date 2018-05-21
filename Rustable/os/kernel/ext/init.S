@@ -145,9 +145,9 @@ context_restore:
     ldp     x23, x24, [SP], #16
     ldp     x25, x26, [SP], #16
     ldp     x27, x28, [SP], #16
-    ldr     x29, [SP], #16
+    ldr     x29, [SP], #8
     
-    ldr     x0, [SP], #8
+    ldr     x0, [SP], #16
     msr     TTBR0_EL1, x0
 
     ret
