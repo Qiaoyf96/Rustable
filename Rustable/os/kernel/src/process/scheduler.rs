@@ -102,6 +102,7 @@ struct Scheduler {
     processes: VecDeque<Process>,
     current: Option<Id>,
     last_id: Option<Id>,
+    current_proc: &Process,
 }
 
 impl Scheduler {
