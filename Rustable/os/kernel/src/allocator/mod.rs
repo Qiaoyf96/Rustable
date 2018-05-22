@@ -54,7 +54,7 @@ impl Allocator {
         self.0.lock().as_mut().expect("allocator uninitialized").alloc_at(addr, layout)
     }
 
-    pub fn switch_content(&self, alloc_from: *mut imp::Allocator, alloc_to: *mut imp::Allocator) {
+    pub fn switch_content(&self, alloc_from: &imp::Allocator, alloc_to: &mut imp::Allocator) {
         // kprintln!("SWITCH");
         // if allocator as *const usize as usize == 0 {
         //     kprintln!("SWITCH");

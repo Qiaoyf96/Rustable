@@ -26,7 +26,7 @@ pub fn do_exec(ms: u32, tf: &mut TrapFrame) {
         kprintln!("tf ttbr0 {:x}", process.trap_frame.ttbr0);
         let tf = process.trap_frame.clone();
         kprintln!("tf ttbr0: {:x}", tf.ttbr0);
-        ALLOCATOR.switch_content(&process.allocator as *const Allocator as *mut Allocator, unsafe { &mut BACKUP_ALLOCATOR as *mut Allocator });
+        ALLOCATOR.switch_content(&process.allocator, unsafe { &mut BACKUP_ALLOCATOR });
 
         unsafe {
             asm!("mov sp, $0

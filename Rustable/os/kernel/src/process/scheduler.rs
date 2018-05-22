@@ -7,7 +7,7 @@ use ALLOCATOR;
 use std::mem;
 use pi::interrupt::{Interrupt, Controller};
 use pi::timer::tick_in;
-
+use std::ops::Deref;
 use aarch64;
 
 use console::kprintln;
@@ -112,7 +112,7 @@ impl GlobalScheduler {
         process.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
         process.load_icode((0x14c7000)  as *mut u8, 0);
         let tf = process.trap_frame.clone();
-        let allocator_addr = &process.allocator as *const Allocator as *mut Allocator;
+        let allocator = Box::new(process.allocator);
         self.add(process);
 
         kprintln!("add process");
@@ -129,7 +129,7 @@ impl GlobalScheduler {
         Controller::new().enable(Interrupt::Timer1);
         tick_in(TICK);
 
-        ALLOCATOR.switch_content(allocator_addr, unsafe { &mut BACKUP_ALLOCATOR as *mut Allocator });
+        ALLOCATOR.switch_content(allocator.deref(), unsafe { &mut BACKUP_ALLOCATOR });
 
         kprintln!("========================================enter user mode========================================");
         unsafe {

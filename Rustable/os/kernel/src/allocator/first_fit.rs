@@ -302,21 +302,21 @@ impl Allocator {
         // kprintln!("dealloc ed");
     }
     
-    pub fn switch_content(&mut self, alloc_from: *mut Allocator, alloc_to: *mut Allocator) {
+    pub fn switch_content(&mut self, alloc_from: &Allocator, alloc_to: &mut Allocator) {
         // let temp = self.copy();
         // if allocator as *mut usize as usize != 0 {
         //     self = *allocator;
         // }
         // *allocator = temp;
         unsafe {
-            (*alloc_to).n_free = self.n_free;
-            (*alloc_to).base_page = self.base_page;
-            (*alloc_to).base_paddr = self.base_paddr;
-            (*alloc_to).free_list = self.free_list;
-            self.n_free = (*alloc_from).n_free;
-            self.base_page = (*alloc_from).base_page;
-            self.base_paddr = (*alloc_from).base_paddr;
-            self.free_list = (*alloc_from).free_list;
+            alloc_to.n_free = self.n_free;
+            alloc_to.base_page = self.base_page;
+            alloc_to.base_paddr = self.base_paddr;
+            alloc_to.free_list = self.free_list;
+            self.n_free = alloc_from.n_free;
+            self.base_page = alloc_from.base_page;
+            self.base_paddr = alloc_from.base_paddr;
+            self.free_list = alloc_from.free_list;
         }
     }
 }
