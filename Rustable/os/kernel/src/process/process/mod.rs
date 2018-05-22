@@ -45,6 +45,7 @@ pub struct Process {
     pub proc_name: String,
     pub allocator: Allocator,
     pub pid: usize,
+    pub parent: &Process
 }
 
 impl Process {
