@@ -1,10 +1,14 @@
 mod exec;
 mod sleep;
+mod exit;
+mod fork;
 
 use traps::TrapFrame;
 
 use self::exec::do_exec;
 use self::sleep::sleep;
+use self::exit::do_exit;
+use self::fork::do_fork;
 use console::kprintln;
 
 /// Sleep for `ms` milliseconds.
@@ -23,12 +27,18 @@ pub fn handle_syscall(num: u16, tf: &mut TrapFrame) {
         },
         2 => {
             do_exec(tf.x0 as u32, tf);
-        }
+        },
         3 => {
             use aarch64::get_ttbr0;
             let mut ttbr0 = unsafe { get_ttbr0() };
             kprintln!("ttbr: {:x}", ttbr0);
             kprintln!("user called! {}", tf.x0);
+        },
+        4 => {
+            do_fork();
+        }
+        5 => {
+            do_exit(tf);
         }
         _ => {
             // x7 = 1, syscall does not exist.

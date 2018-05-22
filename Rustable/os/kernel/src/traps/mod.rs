@@ -51,13 +51,14 @@ pub struct Info {
 /// the trap frame for the exception.
 #[no_mangle]
 pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
-    let mut ttbr0 = unsafe { get_ttbr0() };
-    kprintln!("ttbr: {:x}", ttbr0);
-    let elr = tf.elr;
-    kprintln!("elr: {:x}", elr);
-    kprintln!("{:?} {:?} {:b}", info.source, info.kind, esr);
-    unsafe { ALLOCATOR.switch_content(mem::transmute(BACKUP_ALLOCATOR), mem::transmute(USER_ALLOCATOR)); }
-    kprintln!("finish switch allocator");
+    // let mut ttbr0 = unsafe { get_ttbr0() };
+    // kprintln!("ttbr: {:x}", ttbr0);
+    // let elr = tf.elr;
+    // kprintln!("elr: {:x}", elr);
+    // kprintln!("{:?} {:?} {:b}", info.source, info.kind, esr);
+    kprintln!("BACKUP: {:x}", unsafe { BACKUP_ALLOCATOR.base_paddr });
+    unsafe { ALLOCATOR.switch_content(&mut BACKUP_ALLOCATOR as *mut Allocator, &mut USER_ALLOCATOR as *mut Allocator); }
+    // kprintln!("finish switch allocator");
     // kprintln!("{:?} {:?}", info.kind, info.kind==Kind::SError);
     if info.kind == Kind::Synchronous {
         // kprintln!("syn");
@@ -66,25 +67,25 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
                 // shell::shell(" [brk]$ ");
                 kprintln!("brk");
                 tf.elr += 4;
-                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
+                unsafe { ALLOCATOR.switch_content(&mut USER_ALLOCATOR as *mut Allocator, &mut BACKUP_ALLOCATOR as *mut Allocator); }
                 return;
             },
             Syndrome::Svc(syscall) => {
                 kprintln!("syscall");
                 handle_syscall(syscall, tf);
-                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
+                unsafe { ALLOCATOR.switch_content(&mut USER_ALLOCATOR as *mut Allocator, &mut BACKUP_ALLOCATOR as *mut Allocator); }
                 return;
             },
             Syndrome::InstructionAbort{kind, level} => {
                 kprintln!("InstructionAbort");
                 do_pgfault(kind, level);
-                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
+                unsafe { ALLOCATOR.switch_content(&mut USER_ALLOCATOR as *mut Allocator, &mut BACKUP_ALLOCATOR as *mut Allocator); }
                 return;
             },
             Syndrome::DataAbort{kind, level} => {
                 kprintln!("DataAbort");
                 do_pgfault(kind, level);
-                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
+                unsafe { ALLOCATOR.switch_content(&mut USER_ALLOCATOR as *mut Allocator, &mut BACKUP_ALLOCATOR as *mut Allocator); }
                 return;
             },
             _ => { kprintln!{"unknown type"}; }
@@ -95,7 +96,7 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
         for interrupt in [Timer1, Timer3, Usb, Gpio0, Gpio1, Gpio2, Gpio3, Uart].iter() {
             if controller.is_pending(*interrupt) {
                 handle_irq(*interrupt, tf);
-                unsafe { ALLOCATOR.switch_content(mem::transmute(USER_ALLOCATOR), mem::transmute(BACKUP_ALLOCATOR)); }
+                unsafe { ALLOCATOR.switch_content(&mut USER_ALLOCATOR as *mut Allocator, &mut BACKUP_ALLOCATOR as *mut Allocator); }
                 return;
             }
         }

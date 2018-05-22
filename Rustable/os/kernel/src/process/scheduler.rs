@@ -1,10 +1,12 @@
 use std::collections::VecDeque;
-
+use allocator::imp::BACKUP_ALLOCATOR;
 use mutex::Mutex;
 use process::{Process, State, Id};
 use traps::TrapFrame;
-// use pi::interrupt::{Interrupt, Controller};
-// use pi::timer::tick_in;
+use ALLOCATOR;
+use std::mem;
+use pi::interrupt::{Interrupt, Controller};
+use pi::timer::tick_in;
 
 use aarch64;
 
@@ -52,6 +54,14 @@ impl GlobalScheduler {
         self.0.lock().as_mut().expect("scheduler uninitialized").is_empty()
     }
 
+    pub fn pop_current(&self) -> Process {
+        self.0.lock().as_mut().expect("scheduler uninitialized").pop_current()
+    }
+
+    pub fn push_current_front(&self, process: Process) {
+        self.0.lock().as_mut().expect("scheduler uninitialized").push_current_front(process)
+    }
+
     /// Initializes the scheduler and starts executing processes in user space
     /// using timer interrupt based preemptive scheduling. This method should
     /// not return under normal conditions.
@@ -91,18 +101,61 @@ impl GlobalScheduler {
         //       mov lr, xzr
         //       eret" :: "r"(tf) :: "volatile");
         // };
+
+        kprintln!("start schedule");
         
-        sys_exec(1);
+        let mut process = Process::new();
+        process.proc_init();
+        process.trap_frame.ttbr0 = 0x01000000;
+        // process.trap_frame.sp = process.stack.top().as_u64();
+        process.trap_frame.elr = (0x4) as *mut u8 as u64;
+        process.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
+        process.load_icode((0x14c7000)  as *mut u8, 0);
+        let tf = process.trap_frame.clone();
+        let allocator_addr = &process.allocator as *const Allocator as *mut Allocator;
+        self.add(process);
+
+        kprintln!("add process");
+
+        let mut process2 = Process::new();
+        process2.proc_init();
+        process2.trap_frame.ttbr0 = 0x01000000;
+        // process.trap_frame.sp = process.stack.top().as_u64();
+        process2.trap_frame.elr = (0x4) as *mut u8 as u64;
+        process2.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
+        process2.load_icode((0x1510000)  as *mut u8, 0);
+        self.add(process2);
+        
+        Controller::new().enable(Interrupt::Timer1);
+        tick_in(TICK);
+
+        ALLOCATOR.switch_content(allocator_addr, unsafe { &mut BACKUP_ALLOCATOR as *mut Allocator });
+
+        kprintln!("========================================enter user mode========================================");
+        unsafe {
+            asm!("mov sp, $0
+              bl context_restore
+              adr lr, _start
+              mov sp, lr
+              mov lr, xzr
+              dsb ishst
+              tlbi vmalle1is
+              dsb ish
+              tlbi vmalle1is
+              isb
+              eret" :: "r"(tf) :: "volatile");
+        };
+
+        // sys_exec(1);
         kprintln!("no eret");
     }
 }
 
 #[derive(Debug)]
-struct Scheduler {
+struct Scheduler{
     processes: VecDeque<Process>,
     current: Option<Id>,
     last_id: Option<Id>,
-    current_proc: &Process,
 }
 
 impl Scheduler {
@@ -111,7 +164,7 @@ impl Scheduler {
         Scheduler {
             processes: VecDeque::new(),
             current: None,
-            last_id: None
+            last_id: None,
         }
     }
 
@@ -149,18 +202,25 @@ impl Scheduler {
     /// This method blocks until there is a process to switch to, conserving
     /// energy as much as possible in the interim.
     fn switch(&mut self, new_state: State, tf: &mut TrapFrame) -> Option<Id> {
+        kprintln!("enter switch");
         let mut current = self.processes.pop_front()?;
+        kprintln!("enter switch");
         let current_id = current.get_id();
+        kprintln!("enter switch");
+        kprintln!("tf: {:x}", tf as *mut TrapFrame as *mut usize as usize);
         current.trap_frame = Box::new(*tf);
+        kprintln!("enter switch");
         current.state = new_state;
+        kprintln!("enter switch");
         self.processes.push_back(current);
+        kprintln!("enter switch");
 
         loop {
             let mut process = self.processes.pop_front()?;
             if process.is_ready() {
                 self.current = Some(process.get_id() as Id);
                 *tf = *process.trap_frame;
-                unsafe { USER_ALLOCATOR = &mut *(&mut process.allocator as *mut Allocator); }
+                unsafe { USER_ALLOCATOR = process.allocator; }
                 process.state = State::Running;
 
                 // Push process back into queue.
@@ -174,6 +234,7 @@ impl Scheduler {
             self.processes.push_back(process);
         }
 
+        kprintln!("exit switch");
         self.current
     }
 
@@ -188,5 +249,13 @@ impl Scheduler {
     
     fn is_empty(&self) -> bool {
         self.processes.is_empty()
+    }
+
+    fn pop_current(&mut self) -> Process {
+        self.processes.pop_front().expect("no processes running.")
+    }
+
+    fn push_current_front(&mut self, process: Process) {
+        self.processes.push_front(process);
     }
 }

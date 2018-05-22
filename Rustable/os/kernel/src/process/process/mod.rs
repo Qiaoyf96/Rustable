@@ -45,7 +45,7 @@ pub struct Process {
     pub proc_name: String,
     pub allocator: Allocator,
     pub pid: usize,
-    pub parent: &Process
+    pub parent: Option<Box<Process>>,
 }
 
 impl Process {
@@ -62,6 +62,7 @@ impl Process {
             allocator: Allocator::new(),
             pid: 0,
             proc_name: String::from("idle"),
+            parent: None,
         }
     }
 
@@ -122,7 +123,7 @@ impl Process {
             Ok(paddr) => { KADDR(paddr as usize) as *const usize},
             Err(_) => { return Err(-1); }
         };
-
+        kprintln!("pgdir: {:x}", pgdir as usize);
         self.allocator.init_user(pgdir);
 
         kprintln!("finish init user page");

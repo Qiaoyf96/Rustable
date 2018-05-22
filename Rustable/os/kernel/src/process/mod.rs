@@ -1,5 +1,5 @@
 pub mod process;
-mod state;
+pub mod state;
 mod scheduler;
 mod stack;
 mod elf;

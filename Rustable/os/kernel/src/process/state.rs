@@ -17,6 +17,8 @@ pub enum State {
     Waiting(EventPollFn),
     /// The process is currently running.
     Running,
+
+    Zombie,
 }
 
 impl fmt::Debug for State {
@@ -24,6 +26,7 @@ impl fmt::Debug for State {
         match *self {
             State::Ready => write!(f, "State::Ready"),
             State::Running => write!(f, "State::Running"),
+            State::Zombie => write!(f, "State::Zombie"),
             State::Waiting(_) => write!(f, "State::Waiting"),
         }
     }

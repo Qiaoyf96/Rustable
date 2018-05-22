@@ -150,7 +150,8 @@ pub extern "C" fn kmain() {
     let ttbr0 = unsafe { get_ttbr0() };
     console::kprintln!("ttbr: {:x}", ttbr0);
     
-    copy_elf();
+    let user_pa = copy_elf("USER");
+    let user2_pa = copy_elf("USER2");
     // unsafe { asm!("svc 3" :::: "volatile"); }
     // page_remove(ttbr0 as *const usize, 0x15c1000, get_pte(ttbr0 as *const usize , 0x15c1000, false).expect(""));
     // let illegal_addr: usize = 0x14c1008;

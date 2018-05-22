@@ -1,32 +1,33 @@
 use SCHEDULER;
-use process::process::{Process, get_unique_pid};
+use process::process::{Process};
 
 fn alloc_proc() -> Process {
     let mut process = Process::new();
-    process.trap_frame = Box::new(TrapFrame::default());
-    process.state = State::;
-    process.proc_name = "";
-    process.allocator = None;
-    process.pid = -1;
+    // process.trap_frame = Box::new(TrapFrame::default());
+    // process.state = State::Ready;
+    // process.proc_name = "";
     process
 }
 
-fn do_fork() {
-    let mut process = alloc_proc();
+pub fn do_fork() {
+    // let mut current = SCHEDULER.pop_current();;
+
+    // let mut process = alloc_proc();
     
-    process.parent = current;
+    // process.parent = Box::(&current);
 
-    let pgdir = match alloc_page() {
-        Ok(paddr) => { KADDR(paddr as usize) },
-        Err(_) => { return Err(-1); }
-    };
+    // let pgdir = KADDR(alloc_page().expect("alloc page for pgdir") as usize);
 
-    process.allocator = SCHEDULTER.current.clone();
+    // memcpy(pgidr as *mut u8, )
 
-    process.trap_frame.ttbr0 = PADDR(pgdir) as *mut u8;
+    // process.allocator = current.allocator.clone();
 
-    process.pid = get_unique_pid();
+    // process.trap_frame.ttbr0 = PADDR(pgdir) as *mut u8;
 
-    SCHEDULER.add(process);
+    // process.pid = get_unique_pid();
+
+    // SCHEDULER.push_current_front(current);
+
+    // SCHEDULER.add(process);
 }
 

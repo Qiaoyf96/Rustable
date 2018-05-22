@@ -100,9 +100,9 @@ fn read_line<'a>(buf_vec: &'a mut StackVec<'a, u8>) -> &'a str {
     std::str::from_utf8(buf_vec.as_slice()).unwrap_or("")
 }
 
-pub fn copy_elf() {
+pub fn copy_elf(file: &str) -> usize {
     let mut working_dir = PathBuf::from("/");
-    handle_cpy("USER", &mut working_dir);
+    handle_cpy(file, &mut working_dir)
 }
 
 /// Starts a shell using `prefix` as the prefix for each line. This function
@@ -327,7 +327,7 @@ fn exit() {
 }
 
 
-fn handle_cpy(args: &str, working_dir: &PathBuf) {
+fn handle_cpy(args: &str, working_dir: &PathBuf) -> usize {
     kprintln!("cpy");
 
     let mut dir = working_dir.clone();
@@ -337,11 +337,12 @@ fn handle_cpy(args: &str, working_dir: &PathBuf) {
 
     if entry_result.is_err() {
         kprintln!("Path not found.");
-        return;
+        return 0;
     }
 
     let mut pa = alloc_page().expect("alloc pages failed");
-    kprint!("Elf addr: {:x}", pa as usize);
+    let elf_addr = pa as usize;
+    kprint!("Elf {} addr: {:x}", args, pa as usize);
     let entry = entry_result.unwrap();
     if let Some(ref mut file) = entry.into_file() {
         loop {
@@ -362,9 +363,11 @@ fn handle_cpy(args: &str, working_dir: &PathBuf) {
         }
 
         kprintln!("");
+        return elf_addr;
     } else {
         kprintln!("Not a file.");
     }
+    0
 }
 
 fn memcpy(dest: *mut u8, buf: &[u8], n: usize) {
