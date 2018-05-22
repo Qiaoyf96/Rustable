@@ -52,12 +52,9 @@ pub struct Info {
 #[no_mangle]
 pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     let mut ttbr0 = unsafe { get_ttbr0() };
-    unsafe {
-        asm!("ldr lr, =0x1000000
-            msr ttbr0_el1, lr":::::"volatile");
-    };
-    tlb_invalidate(0);
     kprintln!("ttbr: {:x}", ttbr0);
+    let elr = tf.elr;
+    kprintln!("elr: {:x}", elr);
     kprintln!("{:?} {:?} {:b}", info.source, info.kind, esr);
     unsafe { ALLOCATOR.switch_content(mem::transmute(BACKUP_ALLOCATOR), mem::transmute(USER_ALLOCATOR)); }
     kprintln!("finish switch allocator");

@@ -347,15 +347,17 @@ fn handle_cpy(args: &str, working_dir: &PathBuf) {
         loop {
             use std::io::Read;
 
-            let mut buffer = [0u8; 512];
+            let mut buffer = [0u8; 4096];
             match file.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(_) => {
                     kprint!("{}", String::from_utf8_lossy(&buffer));
-                    memcpy(pa, &buffer, 512);
-                    pa = unsafe{ pa.add(512) };
+                    memcpy(pa, &buffer,4096);
+                    pa = unsafe{ pa.add(4096) };
+
                 },
                 Err(e) => kprint!("Failed to read file: {:?}", e)
+
             }
         }
 
@@ -379,4 +381,10 @@ fn handle_v() {
     let bits = unsafe { std::slice::from_raw_parts_mut(pa as *mut u8, 100) };
     kprint!("{}", String::from_utf8_lossy(&bits));
     kprintln!("");
+    let bin = unsafe{ std::slice::from_raw_parts_mut( pa as *mut u32, 20) };
+    kprintln!("~~~ cpy instruction ~~~");
+    for ins in bin {
+        kprintln!("{:b}", ins);
+    }
+    kprintln!("~~~~~~~~~~~~~~~~~~~");
 }

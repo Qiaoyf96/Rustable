@@ -56,6 +56,15 @@ context_save:
     mrs     x1, TTBR0_EL1
     str     x1, [SP, #-8]!
 
+    ldr     x1, =0x1000000
+    msr     TTBR0_EL1, x1
+
+    dsb ishst
+    tlbi vmalle1is
+    dsb ish
+    tlbi vmalle1is
+    isb
+
     stp     x29, lr, [SP, #-16]!
     stp     x27, x28, [SP, #-16]!
     stp     x25, x26, [SP, #-16]!
@@ -145,10 +154,16 @@ context_restore:
     ldp     x23, x24, [SP], #16
     ldp     x25, x26, [SP], #16
     ldp     x27, x28, [SP], #16
-    ldr     x29, [SP], #8
+    ldr     x29, [SP], #16
     
-    ldr     x0, [SP], #16
+    ldr     x0, [SP], #8
     msr     TTBR0_EL1, x0
+    
+    dsb ishst
+    tlbi vmalle1is
+    dsb ish
+    tlbi vmalle1is
+    isb
 
     ret
 

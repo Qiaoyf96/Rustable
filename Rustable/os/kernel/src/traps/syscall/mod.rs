@@ -28,7 +28,7 @@ pub fn handle_syscall(num: u16, tf: &mut TrapFrame) {
             use aarch64::get_ttbr0;
             let mut ttbr0 = unsafe { get_ttbr0() };
             kprintln!("ttbr: {:x}", ttbr0);
-            kprintln!("user called!");
+            kprintln!("user called! {}", tf.x0);
         }
         _ => {
             // x7 = 1, syscall does not exist.

@@ -129,12 +129,12 @@ fn page_init() {
 }
 
 pub fn page_insert(pgdir: *const usize, page: *mut Page, va: usize, perm: usize) -> Result<i32, i32>{
-    kprintln!("page_insert: pgidr {:x}, pa {:x}, va {:x}", pgdir as usize, page2pa(page), va);
+    // kprintln!("page_insert: pgidr {:x}, pa {:x}, va {:x}", pgdir as usize, page2pa(page), va);
     let PERM = perm | PTE_V | ATTRINDX_NORMAL | ATTRIB_SH_INNER_SHAREABLE | AF;
     let mut pte: *mut usize;
     match get_pte(pgdir, va, true) {
         Ok(pte) => {
-            kprintln!("pte {:x}", unsafe{ *pte });
+            // kprintln!("pte {:x}", unsafe{ *pte });
             (unsafe { &mut *page }).page_ref_inc();
             if unsafe{ *pte & PTE_V != 0} {
                 if pa2page(PTE_ADDR(unsafe{*pte})) != page {
@@ -146,7 +146,7 @@ pub fn page_insert(pgdir: *const usize, page: *mut Page, va: usize, perm: usize)
                 }
             }
             unsafe{ *pte = PTE_ADDR(page2pa(page)) | PERM };
-            kprintln!("pte {:x}", unsafe{ *pte });
+            // kprintln!("pte {:x}", unsafe{ *pte });
             tlb_invalidate(va);
             return Ok(0);
         },

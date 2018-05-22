@@ -167,6 +167,7 @@ impl Process {
                 memcpy( unsafe{ pa.add(offset) }, unsafe{ binary.add(bin_off) }, size);
                 va += PGSIZE;
                 bin_off += size;
+
             }
             let mut end = (ph.p_offset + ph.p_filesz) as usize;
             loop {
@@ -182,6 +183,7 @@ impl Process {
                     end - bin_off
                 };
                 memcpy(pa, unsafe{ binary.add(bin_off) }, size);
+                
                 bin_off += PGSIZE;
                 va += PGSIZE;
             }
@@ -206,17 +208,13 @@ impl Process {
         user_pgdir_alloc_page(&mut self.allocator, pgdir, USTACKTOP-3*PGSIZE, perm).expect("user alloc page failed");
         user_pgdir_alloc_page(&mut self.allocator, pgdir, USTACKTOP-4*PGSIZE, perm).expect("user alloc page failed");
 
-
         self.trap_frame.ttbr0 = PADDR(pgdir as usize) as u64;
         kprintln!("ttbr0: {:x}", pgdir as usize);
         self.trap_frame.sp = USTACKTOP as u64;
         kprintln!("sp:    {:x}", USTACKTOP as usize);
         let pte = get_pte(pgdir as *const usize , 0 as usize, false).expect("get pte");
         kprintln!("pte    {:x}", unsafe{ *pte } );
-        kprintln!("content:");
-        let bits = unsafe { ptr::read(0x1811000 as *mut usize) };
-        kprintln!("first instruction: {:x}", bits);
-        kprintln!("end");
+        
         kprintln!("============================================");
         Ok(0)
     }
