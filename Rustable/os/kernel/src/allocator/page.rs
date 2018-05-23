@@ -81,6 +81,7 @@ pub fn user_pa2page(pa: usize) -> *mut Page {
     &mut pages[PPN(pa)] as *mut Page
 }
 
+#[repr(C)]
 pub struct Page {
     pub list_entry: LinkedList,    // used for linked list
     pub reference: i32,           // page frame's reference counter
@@ -98,12 +99,24 @@ impl Page {
         self.flags = self.flags | 0b10;
     }
 
+    pub fn SetPageUsed(&mut self) {
+        self.flags = self.flags | 0b100;
+    }
+    
+    pub fn isUsed(&mut self) -> bool {
+        (self.flags >> 2) & 0x1 == 1
+    }
+
     pub fn ClearPageProperty(&mut self) {
         self.flags = self.flags & 0xfffffffd;
     }
 
     pub fn ClearPageReserved(&mut self) {
         self.flags = self.flags & 0xfffffffe;
+    }
+
+    pub fn ClearPageUsed(&mut self) {
+        self.flags = self.flags & 0xfffffffb;
     }
 
     pub fn set_page_ref(&mut self, val: i32) {

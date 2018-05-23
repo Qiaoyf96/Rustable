@@ -9,19 +9,18 @@ pub mod imp;
 #[cfg(test)]
 mod tests;
 
-pub use self::page::{Page, PGSIZE};
+pub use self::page::{Page, PGSIZE, UXN, PXN, ATTRIB_AP_RW_ALL, PTE_ADDR, PTE_V};
 
 use mutex::Mutex;
 use alloc::heap::{Alloc, AllocErr, Layout};
 use std::cmp::max;
-
-use std::ptr;
+use std::{ptr, mem};
 
 use console::kprintln;
 
 use pi::atags::Atags;
 
-use process::process::utils::memset;
+use process::process::utils::{memset, memcpy};
 
 /// Thread-safe (locking) wrapper around a particular memory allocator.
 // #[derive(Debug)]
@@ -65,6 +64,8 @@ impl Allocator {
         // backup.as_mut().expect("allocator uninitialized") as *const imp::Allocator
         self.0.lock().as_mut().expect("allocator uninitialized").switch_content(alloc_from, alloc_to);
     }
+
+    
 
 }
 
