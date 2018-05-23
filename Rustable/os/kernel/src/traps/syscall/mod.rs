@@ -29,9 +29,6 @@ pub fn handle_syscall(num: u16, tf: &mut TrapFrame) {
             do_exec(tf.x0 as u32, tf);
         },
         3 => {
-            use aarch64::get_ttbr0;
-            let mut ttbr0 = unsafe { get_ttbr0() };
-            // kprintln!("ttbr: {:x}", ttbr0);
             kprintln!("user called! {}", tf.x0);
         },
         4 => {

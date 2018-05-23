@@ -3,10 +3,7 @@ use console::kprintln;
 use aarch64::{get_far, get_ttbr0};
 use mm::pmm::{page_insert};
 use mm::vm::{get_pte};
-use allocator::page::{ATTRIB_AP_RW_ALL, PGSIZE, ATTRIB_AP_RO_ALL, pa2page};
-use ALLOCATOR;
-use alloc::allocator::Alloc;
-use alloc::heap::Layout;
+use allocator::page::{ATTRIB_AP_RW_ALL, ATTRIB_AP_RO_ALL, pa2page};
 
 use allocator::alloc_page;
 

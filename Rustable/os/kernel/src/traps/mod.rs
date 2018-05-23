@@ -15,10 +15,8 @@ pub use self::trap_frame::TrapFrame;
 use self::syndrome::Syndrome;
 use self::irq::handle_irq;
 use self::syscall::handle_syscall;
-use allocator::imp::{ USER_ALLOCATOR, BACKUP_ALLOCATOR, Allocator };
+use allocator::imp::{ USER_ALLOCATOR, BACKUP_ALLOCATOR };
 use console::kprintln;
-use std::mem;
-use aarch64::{get_ttbr0, tlb_invalidate};
 
 #[repr(u16)]
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
@@ -63,7 +61,7 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
         match Syndrome::from(esr) {
             Syndrome::Brk(i) => {
                 // shell::shell(" [brk]$ ");
-                kprintln!("brk");
+                kprintln!("brk {}", i);
                 tf.elr += 4;
                 unsafe { ALLOCATOR.switch_content(&USER_ALLOCATOR, &mut BACKUP_ALLOCATOR); }
                 return;

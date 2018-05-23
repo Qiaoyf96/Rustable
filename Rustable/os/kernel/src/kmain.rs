@@ -144,14 +144,12 @@ pub extern "C" fn kmain() {
 
     // let illegal_addr: usize = 512*1024*1024 * 2+8;
     // let illegal_val = unsafe { *(illegal_addr as *const usize) };
-    use mm::pmm::{page_remove};
-    use mm::vm::{get_pte};
     use aarch64::get_ttbr0;
     let ttbr0 = unsafe { get_ttbr0() };
     console::kprintln!("ttbr: {:x}", ttbr0);
     
-    let user_pa = copy_elf("USER");
-    let user2_pa = copy_elf("USER2");
+    copy_elf("USER");
+    copy_elf("USER2");
     // unsafe { asm!("svc 3" :::: "volatile"); }
     // page_remove(ttbr0 as *const usize, 0x15c1000, get_pte(ttbr0 as *const usize , 0x15c1000, false).expect(""));
     // let illegal_addr: usize = 0x14c1008;

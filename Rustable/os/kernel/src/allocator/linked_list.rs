@@ -103,7 +103,7 @@ impl LinkedList {
     }
 
     /// inserts the item into the list according to ascending order
-    pub unsafe fn insert_ascending( &mut self, mut item: * mut usize, block_size: usize ) {
+    pub unsafe fn insert_ascending( &mut self, item: * mut usize, _block_size: usize ) {
         
         if self.head.is_null() {
             //insert into empty list

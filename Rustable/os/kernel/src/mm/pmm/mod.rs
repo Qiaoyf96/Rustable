@@ -5,7 +5,11 @@ use allocator::{alloc_page, dealloc_page};
 use allocator::util::{align_down, align_up};
 use alloc::heap::{AllocErr, Layout};
 use alloc::allocator::Alloc;
-use allocator::page::{pa2page, page2pa, PADDR, PTE_ADDR, PTE_V, AF, ATTRIB_SH_INNER_SHAREABLE, ATTRINDX_NORMAL, KERNEL_PAGES, VA2PFN};
+use allocator::page::{
+    pa2page, page2pa, PADDR, PTE_ADDR, 
+    PTE_V, AF, ATTRIB_SH_INNER_SHAREABLE, 
+    ATTRINDX_NORMAL, KERNEL_PAGES
+};
 use allocator::page::{PGSIZE, Page, PPN};
 use mm::vm::get_pte;
 use aarch64::tlb_invalidate;
@@ -15,8 +19,6 @@ use allocator::imp::{Allocator, alloc_page_at};
 
 // use pi::atags;
 use pi::atags::Atags;
-
-mod page_table;
 
 pub struct Pmm;
 
@@ -57,7 +59,6 @@ extern "C" {
 }
 
 fn page_init() {
-    let binary_end = unsafe { &_end as *const u8 as u8 };
     // let binary_end_val = unsafe { *(&_end as *const u8 as *const usize) };
     // kprintln!("Binary_end: {:x} {:x}", binary_end, binary_end_val);
     let mut maxpa = 0 as usize;
@@ -131,7 +132,6 @@ fn page_init() {
 pub fn page_insert(pgdir: *const usize, page: *mut Page, va: usize, perm: usize) -> Result<i32, i32>{
     // kprintln!("page_insert: pgidr {:x}, pa {:x}, va {:x}", pgdir as usize, page2pa(page), va);
     let PERM = perm | PTE_V | ATTRINDX_NORMAL | ATTRIB_SH_INNER_SHAREABLE | AF;
-    let mut pte: *mut usize;
     match get_pte(pgdir, va, true) {
         Ok(pte) => {
             // kprintln!("pte {:x}", unsafe{ *pte });
@@ -139,7 +139,7 @@ pub fn page_insert(pgdir: *const usize, page: *mut Page, va: usize, perm: usize)
             if unsafe{ *pte & PTE_V != 0} {
                 if pa2page(PTE_ADDR(unsafe{*pte})) != page {
                     kprintln!(1);
-                    page_remove(pgdir, va, pte);
+                    page_remove(pte);
                 } else {
                     kprintln!(2);
                     (unsafe { &mut *page }).page_ref_dec();
@@ -147,7 +147,7 @@ pub fn page_insert(pgdir: *const usize, page: *mut Page, va: usize, perm: usize)
             }
             unsafe{ *pte = PTE_ADDR(page2pa(page)) | PERM };
             // kprintln!("pte {:x}", unsafe{ *pte });
-            tlb_invalidate(va);
+            tlb_invalidate();
             return Ok(0);
         },
         Err(_) => {
@@ -158,10 +158,10 @@ pub fn page_insert(pgdir: *const usize, page: *mut Page, va: usize, perm: usize)
 
 
 
-pub fn page_remove(pgdir: *const usize, va: usize, pte: *mut usize) {
+pub fn page_remove(pte: *mut usize) {
     let pa = unsafe{ PTE_ADDR(*pte as usize) as *mut usize };
     let page = pa2page(pa as usize);
-    kprintln!("page remove: va: {:x}, pa: {:x}", va, pa as usize );
+    // kprintln!("page remove: va: {:x}, pa: {:x}", va, pa as usize );
     kprintln!("page remove: ref: {}", (unsafe { &mut *page }).reference);
     if (unsafe { &mut *page }).page_ref_dec() <= 0 {
         // free_page(page);
@@ -170,7 +170,7 @@ pub fn page_remove(pgdir: *const usize, va: usize, pte: *mut usize) {
     }
     unsafe { *pte = 0; }
     kprintln!("page remove: tlb");
-    tlb_invalidate(va);
+    tlb_invalidate();
 }
 
 pub fn pgdir_alloc_page(pgdir: *const usize, va: usize, perm: usize) -> Result<*mut u8, AllocErr> {
@@ -195,7 +195,7 @@ pub fn pgdir_alloc_page(pgdir: *const usize, va: usize, perm: usize) -> Result<*
 
 pub fn user_pgdir_alloc_page(allocator: &mut Allocator, pgdir: *const usize, va: usize, perm: usize) -> Result<*mut u8, AllocErr> {
     kprintln!("user pgidr alloc page: pgidr: {:x}, va: {:x}", pgdir as usize, va);
-    alloc_page_at(allocator, va).expect("alloc virtual page failed");
+    alloc_page_at(allocator, va, pgdir).expect("alloc virtual page failed");
 
     match alloc_page() {
         Ok(pa) => {

@@ -3,18 +3,16 @@ pub mod page_fault;
 pub use self::address::{PhysicalAddr, VirtualAddr};
 
 use allocator::page::{
-    PGSIZE, PT0X, 
+    PGSIZE, 
     PT1X, PT2X, PT3X, PTE_ADDR, PTE_V, AF, 
     UXN, ATTRIB_AP_RW_EL1, ATTRIB_SH_INNER_SHAREABLE, MAXPA,
     ATTRINDX_DEVICE, ATTRINDX_NORMAL
 };
-use alloc::heap::{AllocErr, Layout};
+use alloc::heap::AllocErr;
 use allocator::util::align_up;
 use std;
 use std::ptr;
 use console::kprintln;
-use ALLOCATOR;
-use alloc::allocator::Alloc;
 use allocator::alloc_page;
 
 use pi::timer::{spin_sleep_ms};
@@ -39,13 +37,13 @@ pub extern "C" fn vm_init() {
 
     kprintln!("vm init");
     
-    let mut binary_end = unsafe { (&_end as *const u8) as u32 };
+    let binary_end = unsafe { (&_end as *const u8) as u32 };
     
     unsafe { FREEMEM = align_up(binary_end as usize, PGSIZE); }
     kprintln!("freemem: {:x}", unsafe{FREEMEM});
 
     // /* Step 1: Allocate a page for page directory(first level page table). */
-    let mut pgdir = boot_alloc(PGSIZE, true).expect("out of memory");
+    let pgdir = boot_alloc(PGSIZE, true).expect("out of memory");
 
     kprintln!("boot alloced a pgdir");
 
@@ -112,13 +110,13 @@ fn boot_map_segment(pgdir: *mut usize, _va: usize, _size: usize, _pa: usize, per
 
 pub fn get_pte(pgdir_addr: *const usize, va: usize, create: bool) -> Result<*mut usize, AllocErr> {
     // kprintln!("================= GET PTE =================");
-    let pgdir = unsafe { std::slice::from_raw_parts_mut(pgdir_addr as *mut usize, 512) };
+    // let pgdir = unsafe { std::slice::from_raw_parts_mut(pgdir_addr as *mut usize, 512) };
     // kprintln!("virtual address: {:x}", va);
     // kprintln!("FREEMEM: {:x}", unsafe { FREEMEM });
     
-    let mut pgtable0_entry_ptr = pgdir_addr as *mut usize;
+    let pgtable0_entry_ptr = pgdir_addr as *mut usize;
     // kprintln!("pgtable0: {:x} {:x}", PT0X(va), unsafe{ *pgtable0_entry_ptr });
-    let mut pgtable1_entry_ptr = &mut pgdir[PT1X(va)];
+    // let pgtable1_entry_ptr = &mut pgdir[PT1X(va)];
     // let mut pgtable1 = 
     let mut pgtable1 = PTE_ADDR(unsafe { *pgtable0_entry_ptr }) + PT1X(va) * 8;
     if (unsafe { *pgtable0_entry_ptr } & PTE_V) == 0 && create == true {
@@ -127,7 +125,7 @@ pub fn get_pte(pgdir_addr: *const usize, va: usize, create: bool) -> Result<*mut
         pgtable1 += PT1X(va) * 8;
     }
     // kprintln!("pgtable1: {:x} {:x}", PT1X(va), pgtable1);
-    let mut pgtable1_entry_ptr = pgtable1 as *mut usize;
+    let pgtable1_entry_ptr = pgtable1 as *mut usize;
     let mut pgtable2 = PTE_ADDR(unsafe{ *pgtable1_entry_ptr }) + PT2X(va) * 8;
     if (unsafe{ *pgtable1_entry_ptr & PTE_V }) == 0 && create == true {
         pgtable2 = alloc_page().expect("cannot alloc page") as usize;
@@ -135,7 +133,7 @@ pub fn get_pte(pgdir_addr: *const usize, va: usize, create: bool) -> Result<*mut
         pgtable2 += PT2X(va) * 8;
     }
     // kprintln!("pgtable2: {:x} {:x}", PT2X(va), pgtable2);
-    let mut pgtable2_entry_ptr = pgtable2 as *mut usize;
+    let pgtable2_entry_ptr = pgtable2 as *mut usize;
     let mut pgtable3 = PTE_ADDR(unsafe{ *pgtable2_entry_ptr }) + PT3X(va) * 8;
     if (unsafe{ *pgtable2_entry_ptr & PTE_V }) == 0 && create == true {
         pgtable3 = alloc_page().expect("cannot alloc page") as usize;

@@ -4,7 +4,6 @@ use mutex::Mutex;
 use process::{Process, State, Id};
 use traps::TrapFrame;
 use ALLOCATOR;
-use std::mem;
 use pi::interrupt::{Interrupt, Controller};
 use pi::timer::tick_in;
 use std::ops::Deref;
@@ -12,9 +11,8 @@ use aarch64;
 
 use console::kprintln;
 
-use allocator::imp::{Allocator, USER_ALLOCATOR};
+use allocator::imp::USER_ALLOCATOR;
 
-use process::syscall::{sys_exec};
 // use console;
 
 /// The `tick` time.
@@ -110,7 +108,7 @@ impl GlobalScheduler {
         // process.trap_frame.sp = process.stack.top().as_u64();
         process.trap_frame.elr = (0x4) as *mut u8 as u64;
         process.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
-        process.load_icode((0x14c7000)  as *mut u8, 0);
+        process.load_icode((0x14c7000)  as *mut u8);
         let tf = process.trap_frame.clone();
         let allocator = Box::new(process.allocator);
         self.add(process);
@@ -123,7 +121,7 @@ impl GlobalScheduler {
         // process.trap_frame.sp = process.stack.top().as_u64();
         process2.trap_frame.elr = (0x4) as *mut u8 as u64;
         process2.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
-        process2.load_icode((0x1510000)  as *mut u8, 0);
+        process2.load_icode((0x1510000)  as *mut u8);
         self.add(process2);
         
         Controller::new().enable(Interrupt::Timer1);

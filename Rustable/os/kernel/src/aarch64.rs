@@ -1,5 +1,5 @@
 #[inline(always)]
-pub fn tlb_invalidate(va: usize) {
+pub fn tlb_invalidate() {
     unsafe{
         asm!("dsb ishst
               tlbi vmalle1is
