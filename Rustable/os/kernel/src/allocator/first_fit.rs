@@ -358,13 +358,12 @@ impl Allocator {
         kprintln!("clear page");
         let pte = get_pte(pgdir, self.base_page, false).expect("no pte found.");
         let pages_pa = unsafe{ PTE_ADDR(*pte) };
-        kprintln!("pages_pa: {:x}", pages_pa as usize);
+        // kprintln!("pages_pa: {:x}", pages_pa as usize);
         let npage = self.base_page / PGSIZE;
         let pages = unsafe { std::slice::from_raw_parts_mut(pages_pa as *mut usize as *mut Page, npage) };
         let mut i = 0;
         for page in pages {
             if page.isUsed() {
-                // let va = self.page2addr(page);
                 let va = self.page2addr((self.base_page + i * mem::size_of::<Page>()) as *const Page);
                 kprintln!("va: {:x}", va);
                 match get_pte(pgdir, va, false) {
@@ -375,7 +374,7 @@ impl Allocator {
                             unsafe { (&ALLOCATOR).dealloc(pa, Layout::from_size_align_unchecked(PGSIZE, PGSIZE)); }
                         }
                     },
-                    Err(_) => { kprintln!("*pte == 0"); }
+                    Err(_) => {}
                 }
             }
             i += 1; 
@@ -389,13 +388,15 @@ impl Allocator {
     }
 
     pub fn copy_page(&mut self, src_pgdir: *const usize, dst_pgdir: *const usize) {
-        let pages_pa = get_pte(src_pgdir, self.base_page, false).expect("no pte found.");
+        let pte = get_pte(src_pgdir, self.base_page, false).expect("no pte found.");
+        let pages_pa = unsafe{ PTE_ADDR(*pte) };
+        // kprintln!("pages_pa: {:x}", pages_pa as usize);
         let npage = self.base_page / PGSIZE;
         let pages = unsafe { std::slice::from_raw_parts_mut(pages_pa as *mut usize as *mut Page, npage) };
+        let mut i = 0;
         for page in pages {
-            let phy_page = unsafe { &mut *(va2pa(page as *const Page as usize, src_pgdir) as *mut Page) };
-            if phy_page.isUsed() {
-                let va = self.page2addr(page);
+            if page.isUsed() {
+                let va = self.page2addr((self.base_page + i * mem::size_of::<Page>()) as *const Page);
                 match get_pte(src_pgdir, va, false) {
                     Ok(pte) => {
                         if unsafe{ *pte & PTE_V == 1} {

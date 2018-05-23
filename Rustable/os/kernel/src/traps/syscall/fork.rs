@@ -29,7 +29,7 @@ pub fn do_fork() {
     
     // memcpy(pgidr as *mut u8, )
     // process.allocator = current.allocator.clone();
-    // process.trap_frame.ttbr0 = PADDR(pgdir) as *mut u8;
+    // current.allocator.copy_page(current.trap_frame.ttbr0 as *const usize, process.trap_frame.ttbr0 as *const usize);
     // process.pid = get_unique_pid();
     
     SCHEDULER.push_current_front(current);
