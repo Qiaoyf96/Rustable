@@ -202,18 +202,11 @@ impl Scheduler {
     /// This method blocks until there is a process to switch to, conserving
     /// energy as much as possible in the interim.
     fn switch(&mut self, new_state: State, tf: &mut TrapFrame) -> Option<Id> {
-        kprintln!("enter switch");
         let mut current = self.processes.pop_front()?;
-        kprintln!("enter switch");
         let current_id = current.get_id();
-        kprintln!("enter switch");
-        kprintln!("tf: {:x}", tf as *mut TrapFrame as *mut usize as usize);
         current.trap_frame = Box::new(*tf);
-        kprintln!("enter switch");
         current.state = new_state;
-        kprintln!("enter switch");
         self.processes.push_back(current);
-        kprintln!("enter switch");
 
         loop {
             let mut process = self.processes.pop_front()?;
@@ -233,8 +226,7 @@ impl Scheduler {
 
             self.processes.push_back(process);
         }
-
-        kprintln!("exit switch");
+        kprintln!("current: {}", self.current.unwrap()); 
         self.current
     }
 

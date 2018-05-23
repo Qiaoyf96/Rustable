@@ -55,11 +55,9 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     // kprintln!("ttbr: {:x}", ttbr0);
     // let elr = tf.elr;
     // kprintln!("elr: {:x}", elr);
-    // kprintln!("{:?} {:?} {:b}", info.source, info.kind, esr);
-    kprintln!("BACKUP: {:x}", unsafe { BACKUP_ALLOCATOR.base_paddr });
+    kprintln!("{:?} {:?} {:b}", info.source, info.kind, esr);
+    // kprintln!("BACKUP: {:x}", unsafe { BACKUP_ALLOCATOR.base_paddr });
     unsafe { ALLOCATOR.switch_content(&BACKUP_ALLOCATOR, &mut USER_ALLOCATOR); }
-    // kprintln!("finish switch allocator");
-    // kprintln!("{:?} {:?}", info.kind, info.kind==Kind::SError);
     if info.kind == Kind::Synchronous {
         // kprintln!("syn");
         match Syndrome::from(esr) {

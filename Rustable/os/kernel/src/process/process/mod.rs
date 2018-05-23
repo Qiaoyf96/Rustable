@@ -98,6 +98,8 @@ impl Process {
             true
         } else if let State::Running = self.state {
             false
+        } else if let State::Zombie = self.state {
+            false
         } else {
             let state = mem::replace(&mut self.state, State::Ready);
             if let State::Waiting(mut event_poll_fn) = state {

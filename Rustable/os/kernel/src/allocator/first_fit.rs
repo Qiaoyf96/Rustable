@@ -130,7 +130,7 @@ impl Allocator {
     /// size or alignment constraints (`AllocError::Unsupported`).
     pub fn alloc(&mut self, layout: Layout) -> Result<*mut u8, AllocErr> {
         let npage = align_up(layout.size(), PGSIZE) / PGSIZE;
-        kprintln!("try alloc: {} {}", npage, self.n_free);
+        // kprintln!("try alloc: {} {}", npage, self.n_free);
         if npage as u32 > self.n_free {
             // kprintln!("n_free: {}, npage: {}", self.n_free, npage);
             return Err( AllocErr::Exhausted { request: layout } );
@@ -151,7 +151,7 @@ impl Allocator {
         match page {
             Some(page) => {
                 let mut page_addr = page as *const Page as *mut usize;
-                kprintln!("found page: {:x}, a: {:x}", page_addr as usize, page2kva(page as *const Page));
+                // kprintln!("found page: {:x}, a: {:x}", page_addr as usize, page2kva(page as *const Page));
                 if page.property > npage as u32 {
                     
                     let p = unsafe { &mut *((page_addr as usize+ npage * mem::size_of::<Page>()) as *mut Page) };
@@ -170,9 +170,9 @@ impl Allocator {
                 page.ClearPageProperty();
                 
                 let offset = (((page as *const Page as *mut usize as usize) - self.base_page) / mem::size_of::<Page>()) * PGSIZE;
-                kprintln!("PPN: {:x}", (page as *const Page as *mut usize as usize) - self.base_page);
-                kprintln!("alloc addr: {:x}", offset + self.base_paddr);
-                kprintln!("offset: {:x} base_page: {:x} base_paddr: {:x}", offset, self.base_page, self.base_paddr);
+                // kprintln!("PPN: {:x}", (page as *const Page as *mut usize as usize) - self.base_page);
+                // kprintln!("alloc addr: {:x}", offset + self.base_paddr);
+                // kprintln!("offset: {:x} base_page: {:x} base_paddr: {:x}", offset, self.base_page, self.base_paddr);
                 
                 return Ok((offset + self.base_paddr) as *mut usize as * mut u8);
             }
@@ -183,7 +183,7 @@ impl Allocator {
     pub fn alloc_at(&mut self, va: usize, layout: Layout) -> Result<*mut u8, AllocErr> {
         let npage = align_up(layout.size(), PGSIZE) / PGSIZE;
         let addr = align_down(va, PGSIZE);
-        kprintln!("try alloc_at: {} n_free: {}", npage, self.n_free);
+        // kprintln!("try alloc_at: {} n_free: {}", npage, self.n_free);
         if npage as u32 > self.n_free {
             kprintln!("n_free: {}", self.n_free);
             return Err( AllocErr::Exhausted { request: layout } );
@@ -193,7 +193,7 @@ impl Allocator {
         let mut prev = None;
         for i in self.free_list.iter_mut() {
             let mut p = unsafe { &mut *(i.value() as *mut Page) };
-            kprintln!("loop page: va: {:x}, property {}", page2va(p), p.property);
+            // kprintln!("loop page: va: {:x}, property {}", page2va(p), p.property);
             if addr >= page2va(p) && addr + npage * PGSIZE <= page2va(p) + (p.property as usize) * PGSIZE {
                 page = Some(p);
                 break;
@@ -205,7 +205,7 @@ impl Allocator {
             Some(page) => {
                 let prev_npage = ((addr - page2va(page)) / PGSIZE) as usize;
                 let next_npage = page.property as usize - npage - prev_npage as usize;
-                kprintln!("prev_npage: {}, next_npage: {}", prev_npage, next_npage);
+                // kprintln!("prev_npage: {}, next_npage: {}", prev_npage, next_npage);
                 let mut page_addr = page as *const Page as *mut usize;
                 let alloc_page = unsafe { &mut *((page_addr as usize+ npage * mem::size_of::<Page>()) as *mut Page) };
 
@@ -228,7 +228,7 @@ impl Allocator {
                 self.n_free -= npage as u32;
                 
                 let offset = (((alloc_page as *const Page as *mut usize as usize) - self.base_page) / mem::size_of::<Page>()) * PGSIZE;
-                kprintln!("alloc addr at: {:x}", offset + self.base_paddr);
+                // kprintln!("alloc addr at: {:x}", offset + self.base_paddr);
                 // kprintln!("offset: {:x} base_page: {:x} base_paddr: {:x}", offset, self.base_page, self.base_paddr);
                 return Ok((offset + self.base_paddr) as *mut usize as * mut u8);
             }
