@@ -44,9 +44,9 @@ impl GlobalScheduler {
         self.0.lock().as_mut().expect("scheduler uninitialized").switch(new_state, tf)
     }
 
-    pub fn is_finished(&self, pending_pid: usize) -> bool {
-        self.0.lock().as_mut().expect("scheduler uninitialized").is_finished(pending_pid)
-    }
+    // pub fn is_finished(&self, pending_pid: usize) -> bool {
+    //     self.0.lock().as_mut().expect("scheduler uninitialized").is_finished(pending_pid)
+    // }
 
     pub fn is_empty(&self) -> bool {
         self.0.lock().as_mut().expect("scheduler uninitialized").is_empty()
@@ -58,6 +58,10 @@ impl GlobalScheduler {
 
     pub fn push_current_front(&self, process: Process) {
         self.0.lock().as_mut().expect("scheduler uninitialized").push_current_front(process)
+    }
+    
+    pub fn last_id(&self) -> u64 {
+        self.0.lock().as_mut().expect("scheduler uninitialized").last_id()
     }
 
     /// Initializes the scheduler and starts executing processes in user space
@@ -103,7 +107,6 @@ impl GlobalScheduler {
         kprintln!("start schedule");
         
         let mut process = Process::new();
-        process.proc_init();
         process.trap_frame.ttbr0 = 0x01000000;
         // process.trap_frame.sp = process.stack.top().as_u64();
         process.trap_frame.elr = (0x4) as *mut u8 as u64;
@@ -116,7 +119,6 @@ impl GlobalScheduler {
         kprintln!("add process");
 
         let mut process2 = Process::new();
-        process2.proc_init();
         process2.trap_frame.ttbr0 = 0x01000000;
         // process.trap_frame.sp = process.stack.top().as_u64();
         process2.trap_frame.elr = (0x4) as *mut u8 as u64;
@@ -191,6 +193,10 @@ impl Scheduler {
         self.last_id
     }
 
+    fn last_id(&self) -> u64 {
+        self.last_id.expect("no process to fork")
+    }
+
     /// Sets the current process's state to `new_state`, finds the next process
     /// to switch to, and performs the context switch on `tf` by saving `tf`
     /// into the current process and restoring the next process's trap frame
@@ -228,14 +234,14 @@ impl Scheduler {
         self.current
     }
 
-    fn is_finished(&self, pending_pid: usize) -> bool {
-        for process in self.processes.iter() {
-            if (*process).pid == pending_pid {
-                return false;
-            }
-        }
-        true
-    }
+    // fn is_finished(&self, pending_pid: usize) -> bool {
+    //     for process in self.processes.iter() {
+    //         if (*process).pid == pending_pid {
+    //             return false;
+    //         }
+    //     }
+    //     true
+    // }
     
     fn is_empty(&self) -> bool {
         self.processes.is_empty()

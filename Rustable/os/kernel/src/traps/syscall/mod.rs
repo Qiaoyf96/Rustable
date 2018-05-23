@@ -32,7 +32,7 @@ pub fn handle_syscall(num: u16, tf: &mut TrapFrame) {
             kprintln!("user called! {}", tf.x0);
         },
         4 => {
-            do_fork();
+            do_fork(tf);
         }
         5 => {
             do_exit(tf);

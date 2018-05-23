@@ -8,10 +8,10 @@ pub fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
         i += 1;
     }
 
-    kprintln!("memcpy: dest {:x} src {:x} n {}", dest as usize, src as usize, n);
-    let bits = unsafe { std::slice::from_raw_parts_mut(dest, n) };
-    kprintln!("{}", String::from_utf8_lossy(&bits));
-    kprintln!("---------------------------------");
+    // kprintln!("memcpy: dest {:x} src {:x} n {}", dest as usize, src as usize, n);
+    // let bits = unsafe { std::slice::from_raw_parts_mut(dest, n) };
+    // kprintln!("{}", String::from_utf8_lossy(&bits));
+    // kprintln!("---------------------------------");
 
     return dest;
 }

@@ -1,12 +1,17 @@
 use SCHEDULER;
-use process::process::{Process, get_unique_pid};
+use process::process::Process;
 use process::state::State;
 use allocator::page::{PADDR, KADDR};
 use allocator::alloc_page;
+use traps::TrapFrame;
 
-fn alloc_proc(father: &Process) -> Process {
+use console::kprintln;
+
+fn alloc_proc(father: &Process, tf: &mut TrapFrame) -> Process {
     let mut process = Process::new();
-    process.trap_frame = Box::new(*father.trap_frame.as_ref());
+    process.trap_frame = Box::new(*tf);
+    process.trap_frame.x0 = 0;
+    
     process.state = State::Ready;
     process.parent = Some(father as *const Process);
     
@@ -14,17 +19,19 @@ fn alloc_proc(father: &Process) -> Process {
     
     let pgdir = KADDR(alloc_page().expect("alloc page for pgdir") as usize);
     process.trap_frame.ttbr0 = PADDR(pgdir) as u64;
-    process.pid = get_unique_pid();
 
     process.allocator.init_user(pgdir as *const usize);
+    kprintln!("alloc_proc");
     process.allocator.copy_page(father.trap_frame.ttbr0 as *const usize, process.trap_frame.ttbr0 as *const usize);
 
     process
 }
 
-pub fn do_fork() {
+pub fn do_fork(tf: &mut TrapFrame) {
     let current = SCHEDULER.pop_current();;
-    let process = alloc_proc(&current);
+    tf.x0 = SCHEDULER.last_id() + 1;
+    kprintln!("father return value: {}", tf.x0);
+    let process = alloc_proc(&current, tf);
     // process.parent = Some(Rc::new(current));
     
     // memcpy(pgidr as *mut u8, )

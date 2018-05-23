@@ -27,13 +27,8 @@ use console::kprintln;
 pub type Id = u64;
 
 
-pub static mut pid: usize = 0;
 pub const ELF_MAGIC: u32 = 0x464C457F;
 
-pub fn get_unique_pid() -> usize {
-    unsafe{ pid += 1 };
-    unsafe{ pid - 1 }
-}
 /// A structure that represents the complete state of a process.
 #[derive(Debug)]
 pub struct Process {
@@ -45,7 +40,6 @@ pub struct Process {
     pub state: State,
     pub proc_name: String,
     pub allocator: Allocator,
-    pub pid: usize,
     pub parent: Option<*const Process>,
 }
 
@@ -63,15 +57,9 @@ impl Process {
             // stack,
             state: State::Ready,
             allocator: Allocator::new(),
-            pid: 0,
             proc_name: String::from("idle"),
             parent: None,
         }
-    }
-
-    pub fn proc_init(&mut self) {
-        self.pid = get_unique_pid();
-        // self.allocator.init_user();
     }
 
     pub fn set_proc_name(&mut self, s: &str) {
@@ -185,6 +173,8 @@ impl Process {
                     Ok(pa) => { pa as *mut u8 },
                     Err(_) => { return Err(-3); }
                 };
+                use allocator::page::Page;
+                kprintln!("check flag: {:x}", unsafe { (*(0x1825000 as *mut Page)).flags });
                 let size = if bin_off + PGSIZE >= end {
                     PGSIZE
                 } else {

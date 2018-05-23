@@ -196,23 +196,6 @@ pub fn pgdir_alloc_page(pgdir: *const usize, va: usize, perm: usize) -> Result<*
 pub fn user_pgdir_alloc_page(allocator: &mut Allocator, pgdir: *const usize, va: usize, perm: usize) -> Result<*mut u8, AllocErr> {
     kprintln!("user pgidr alloc page: pgidr: {:x}, va: {:x}", pgdir as usize, va);
     alloc_page_at(allocator, va, pgdir).expect("alloc virtual page failed");
-
-    match alloc_page() {
-        Ok(pa) => {
-            kprintln!("va: {:x}, pa: {:x}", va, pa as usize);
-            let page = pa2page(pa as usize);
-            match page_insert(pgdir, page, va, perm) {
-                Ok(_) => {
-                    return Ok(pa as *mut u8);
-                },
-                Err(_) => {
-                    unsafe { (&ALLOCATOR).dealloc(pa, Layout::from_size_align_unchecked(PGSIZE, PGSIZE)) };
-                    return Err( AllocErr::Unsupported { details: "page insert failed" } );
-                }
-            };
-        },
-        Err(_) => {
-            return Err( AllocErr::Unsupported { details: "alloc page failed" } );
-        }
-    }
+    
+    pgdir_alloc_page(pgdir, va, perm)
 }

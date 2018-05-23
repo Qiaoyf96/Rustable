@@ -1,6 +1,7 @@
 use allocator::linked_list::LinkedList;
 use std;
 use std::mem;
+use console::kprintln;
 
 // ARM definitions.
 pub const PGSIZE: usize = 4096;
@@ -50,6 +51,8 @@ pub const ATTRINDX_NORMAL: usize = 0 << 2;    // inner/outer write-back non-tran
 pub const ATTRINDX_DEVICE: usize = 1 << 2;    // Device-nGnRE
 pub const ATTRINDX_COHERENT: usize = 2 << 2;    // Device-nGnRnE
 
+
+
 pub fn page2ppn(page: *const Page) -> usize {
     (page as *const usize as usize - KERNEL_PAGES) / mem::size_of::<Page>()
 }
@@ -83,6 +86,7 @@ pub fn user_pa2page(pa: usize) -> *mut Page {
 }
 
 #[repr(C)]
+#[derive(Copy, Clone)]
 pub struct Page {
     pub list_entry: LinkedList,    // used for linked list
     pub reference: i32,           // page frame's reference counter
@@ -102,6 +106,7 @@ impl Page {
 
     pub fn SetPageUsed(&mut self) {
         self.flags = self.flags | 0b100;
+        // kprintln!("page {:x} flag {:b}", self as *mut Page as *mut usize as usize, self.flags);
     }
     
     pub fn isUsed(&mut self) -> bool {

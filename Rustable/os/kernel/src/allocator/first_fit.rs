@@ -10,7 +10,7 @@ use allocator::page::{
 use allocator::alloc_pages;
 use allocator;
 use mm::pmm::page_insert;
-use mm::pmm::{user_pgdir_alloc_page};
+use mm::pmm::{user_pgdir_alloc_page,pgdir_alloc_page};
 use mm::vm::{get_pte};
 use process::process::utils::memcpy;
 use ALLOCATOR;
@@ -387,31 +387,44 @@ impl Allocator {
         addr
     }
 
+    fn addr2page(&self, addr: usize) -> *mut Page {
+        let offset = ((addr - self.base_paddr) / PGSIZE * mem::size_of::<Page>()) as usize ;
+        let page = (self.base_page + offset) as *mut usize as *mut Page;
+        page
+    }
+
     pub fn copy_page(&mut self, src_pgdir: *const usize, dst_pgdir: *const usize) {
         let pte = get_pte(src_pgdir, self.base_page, false).expect("no pte found.");
+        let pte_dst = get_pte(dst_pgdir, self.base_page, false).expect("no pte found.");
         let pages_pa = unsafe{ PTE_ADDR(*pte) };
+        let pages_pa_dst = unsafe{ PTE_ADDR(*pte_dst) };
         // kprintln!("pages_pa: {:x}", pages_pa as usize);
         let npage = self.base_page / PGSIZE;
         let pages = unsafe { std::slice::from_raw_parts_mut(pages_pa as *mut usize as *mut Page, npage) };
+
+        memcpy(pages_pa_dst as *mut u8, pages_pa as *mut u8, npage * mem::size_of::<Page>());
+        
         let mut i = 0;
         for page in pages {
+            // kprintln!("copy {} {:?} {:x}", i, page.isUsed(), page as *mut Page as *mut usize as usize);
             if page.isUsed() {
                 let va = self.page2addr((self.base_page + i * mem::size_of::<Page>()) as *const Page);
                 match get_pte(src_pgdir, va, false) {
                     Ok(pte) => {
-                        if unsafe{ *pte & PTE_V == 1} {
+                        if unsafe{ *pte & PTE_V != 0} {
                             let src_pa = PTE_ADDR( unsafe{ *pte }) as *mut u8;
                             let PXN = 0x1 << 53 as usize;
                             let UXN = 0x0 << 54 as usize;
                             let perm = UXN | PXN | ATTRIB_AP_RW_ALL;
-                            let dst_pa = user_pgdir_alloc_page(self, dst_pgdir, va, perm).expect("user alloc page failed");
+                            let dst_pa = pgdir_alloc_page(dst_pgdir, va, perm).expect("user alloc page failed");
+                            kprintln!("src_pa: {:x}, dst_pa: {:x}", src_pa as usize , dst_pa as usize);
                             memcpy(dst_pa as *mut u8, src_pa as *mut u8, PGSIZE);
                         }
                     },
                     Err(_) => {}
                 }
-                
             }
+            i += 1;
         }
     }
     
