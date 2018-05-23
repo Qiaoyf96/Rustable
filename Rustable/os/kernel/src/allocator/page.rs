@@ -11,7 +11,7 @@ pub const KERNEL_PAGES: usize = 0xFFFFFF0000000000 + 0x01400000;
 pub const USER_PAGES: usize = 0x1fd00000;
 pub const USER_NPAGE: usize = 768;
 
-pub const USTACKTOP: usize = 0x80000000;
+pub const USTACKTOP: usize = 0x1f000000;
 
 // index of page table entry
 pub fn PT0X(va: usize) -> usize { (va >> 39) & 0x01 }
@@ -21,6 +21,7 @@ pub fn PT3X(va: usize) -> usize { (va >> 12) & 0x1FF }
 
 // gets addr of pte from pte with modifier
 pub fn PTE_ADDR(pte: usize) -> usize { pte & 0xFFFFFFF000 }
+pub fn OFFSET(addr: usize) -> usize { addr & 0xFFF }
 
 // page number field of address
 pub fn PPN(va: usize) -> usize { va >> 12 }
@@ -65,7 +66,7 @@ pub fn pa2page(pa: usize) -> *mut Page {
     if PPN(pa) >= NPAGE {
         panic!("pa2page called with invalid pa: {:x}", pa);
     }
-    let mut pages = unsafe { std::slice::from_raw_parts_mut(KERNEL_PAGES as *mut usize as *mut Page, NPAGE) };
+    let pages = unsafe { std::slice::from_raw_parts_mut(KERNEL_PAGES as *mut usize as *mut Page, NPAGE) };
     &mut pages[PPN(pa)] as *mut Page
 }
 
@@ -77,7 +78,7 @@ pub fn user_pa2page(pa: usize) -> *mut Page {
     if PPN(pa) >= USER_NPAGE {
         panic!("pa2page called with invalid pa: {:x}", pa);
     }
-    let mut pages = unsafe { std::slice::from_raw_parts_mut(USER_PAGES as *mut usize as *mut Page, USER_NPAGE) };
+    let pages = unsafe { std::slice::from_raw_parts_mut(USER_PAGES as *mut usize as *mut Page, USER_NPAGE) };
     &mut pages[PPN(pa)] as *mut Page
 }
 

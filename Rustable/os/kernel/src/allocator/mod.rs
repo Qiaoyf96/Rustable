@@ -14,13 +14,10 @@ pub use self::page::{Page, PGSIZE, UXN, PXN, ATTRIB_AP_RW_ALL, PTE_ADDR, PTE_V};
 use mutex::Mutex;
 use alloc::heap::{Alloc, AllocErr, Layout};
 use std::cmp::max;
-use std::{ptr, mem};
-
-use console::kprintln;
 
 use pi::atags::Atags;
 
-use process::process::utils::{memset, memcpy};
+use process::process::utils::memset;
 
 /// Thread-safe (locking) wrapper around a particular memory allocator.
 // #[derive(Debug)]
@@ -49,8 +46,8 @@ impl Allocator {
         self.0.lock().as_mut().expect("allocator uninitialized").init_memmap(base, npage, begin);
     }
 
-    pub fn alloc_at(&self, addr: usize, layout: Layout) -> Result<*mut u8, AllocErr> {
-        self.0.lock().as_mut().expect("allocator uninitialized").alloc_at(addr, layout)
+    pub fn alloc_at(&self, addr: usize, layout: Layout, pgdir: *const usize) -> Result<*mut u8, AllocErr> {
+        self.0.lock().as_mut().expect("allocator uninitialized").alloc_at(addr, layout, pgdir)
     }
 
     pub fn switch_content(&self, alloc_from: &imp::Allocator, alloc_to: &mut imp::Allocator) {
@@ -82,25 +79,6 @@ unsafe impl<'a> Alloc for &'a Allocator {
 
 extern "C" {
     static _end: u8;
-}
-
-/// Returns the (start address, end address) of the available memory on this
-/// system if it can be determined. If it cannot, `None` is returned.
-///
-/// This function is expected to return `Some` under all normal cirumstances.
-fn memory_map() -> Option<(usize, usize)> {
-    let binary_end = unsafe { (&_end as *const u8) as u32 };
-    for atag in Atags::get() {
-        match atag.mem() {
-            Some(mem) => {
-                let start_addr = max(mem.start, binary_end) as usize;
-                let end_addr = (start_addr + mem.size as usize) as usize;
-                return Some((start_addr, end_addr));
-            },
-            None => {}
-        }
-    }
-    None
 }
 
 pub fn alloc_page() -> Result<*mut u8, AllocErr> {

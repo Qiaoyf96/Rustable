@@ -1,0 +1,2 @@
+kernel_address=0x0
+device_tree=

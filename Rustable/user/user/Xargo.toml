@@ -1,0 +1,9 @@
+[dependencies]
+core = {}
+std_unicode = {}
+alloc = {}
+
+[dependencies.compiler_builtins]
+features = ["mem"]
+stage = 1
+

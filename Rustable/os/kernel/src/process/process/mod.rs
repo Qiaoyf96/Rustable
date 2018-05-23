@@ -8,7 +8,7 @@ use allocator::imp::Allocator;
 use allocator::util::{align_down};
 use allocator::{alloc_page};
 use mm::pmm::user_pgdir_alloc_page;
-use allocator::page::{ Page, PGSIZE, USTACKTOP, PADDR, page2kva, page2va, ATTRIB_AP_RW_ALL, KADDR };
+use allocator::page::{ PGSIZE, USTACKTOP, PADDR, ATTRIB_AP_RW_ALL, KADDR };
 
 pub const PXN: usize = 0x1 << 53;
 pub const UXN: usize = 0x0 << 54;
@@ -29,7 +29,8 @@ pub type Id = u64;
 
 pub static mut pid: usize = 0;
 pub const ELF_MAGIC: u32 = 0x464C457F;
-fn get_unique_pid() -> usize {
+
+pub fn get_unique_pid() -> usize {
     unsafe{ pid += 1 };
     unsafe{ pid - 1 }
 }
@@ -45,8 +46,10 @@ pub struct Process {
     pub proc_name: String,
     pub allocator: Allocator,
     pub pid: usize,
-    pub parent: Option<Box<Process>>,
+    pub parent: Option<*const Process>,
 }
+
+unsafe impl Send for Process {}
 
 impl Process {
     /// Creates a new process with a zeroed `TrapFrame` (the default), a zeroed
@@ -118,7 +121,7 @@ impl Process {
 }
 
 impl Process {
-    pub fn load_icode(&mut self, binary: *mut u8, size: usize) -> Result<i32, i32> {
+    pub fn load_icode(&mut self, binary: *mut u8) -> Result<i32, i32> {
         kprintln!("================ LOAD_ICODE ================");
         // create a new PDT, and mm->pgdir= kernel virtual addr of PDT
         let pgdir = match alloc_page() {
@@ -137,12 +140,13 @@ impl Process {
 
         kprintln!("binary: {:x}", binary as usize);
         let elf = unsafe { ptr::read( binary as *const Elfhdr ) };
-
-        kprintln!("e_magic:   {:x}", elf.e_magic);
-        kprintln!("e_type:    {:x}", elf.e_type);
-        kprintln!("e_machine: {:x}", elf.e_machine);
-        kprintln!("e_version: {:x}", elf.e_version);
-        kprintln!("elf phoff: {}, elf phnum: {}, elf entry: {}, shoff: {}, shnum: {} ", elf.e_phoff, elf.e_phnum, elf.e_entry, elf.e_shoff, elf.e_shnum);
+        unsafe {
+            kprintln!("e_magic:   {:x}", elf.e_magic);
+            kprintln!("e_type:    {:x}", elf.e_type);
+            kprintln!("e_machine: {:x}", elf.e_machine);
+            kprintln!("e_version: {:x}", elf.e_version);
+            kprintln!("elf phoff: {}, elf phnum: {}, elf entry: {}, shoff: {}, shnum: {} ", elf.e_phoff, elf.e_phnum, elf.e_entry, elf.e_shoff, elf.e_shnum);
+        }
         
         let phs = unsafe { std::slice::from_raw_parts_mut( binary.add(elf.e_phoff as usize) as *mut Proghdr, elf.e_phnum as usize) };
         if elf.e_magic != ELF_MAGIC {
@@ -158,7 +162,7 @@ impl Process {
             let mut offset = ph.p_va as usize - align_down(ph.p_va as usize, PGSIZE);
             let mut va = align_down(ph.p_va as usize, PGSIZE) as usize;
             let mut bin_off = ph.p_offset as usize;
-            kprintln!("va: {:x} p_offset: {} filesz: {} memsz: {} offset: {}", ph.p_va, ph.p_offset, ph.p_filesz, ph.p_memsz, offset);
+            unsafe { kprintln!("va: {:x} p_offset: {} filesz: {} memsz: {} offset: {}", ph.p_va, ph.p_offset, ph.p_filesz, ph.p_memsz, offset); }
             // copy TEXT/DATA section of bianry program
             kprintln!("TEXT/DATA");
             if offset > 0 {

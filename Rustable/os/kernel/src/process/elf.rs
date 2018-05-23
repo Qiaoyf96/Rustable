@@ -1,6 +1,3 @@
-use std::mem;
-use std::ptr;
-
 #[no_mangle]
 #[repr(C, packed)]
 pub struct Elfhdr {
