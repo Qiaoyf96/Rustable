@@ -23,7 +23,9 @@ pub fn do_pgfault(kind: Fault, level: u8) {
             }
             kprintln!("~~~");
             let paddr = alloc_page().expect("cannot alloc page");
+            kprintln!("page insert");
             page_insert( ttbr0 , pa2page(paddr as usize), va, ATTRIB_AP_RW_ALL);
+            kprintln!("page inserted");
             
         },
         Err(_) => {

@@ -164,6 +164,7 @@ impl Allocator {
                 // kprintln!("PPN: {:x}", (page as *const Page as *mut usize as usize) - self.base_page);
                 // kprintln!("alloc addr: {:x}", offset + self.base_paddr);
                 // kprintln!("offset: {:x} base_page: {:x} base_paddr: {:x}", offset, self.base_page, self.base_paddr);
+                kprintln!("alloc pa: {:x} base_page {:x} base_paddr {:x} n_free {}", self.page2addr(page), self.base_page, self.base_paddr, self.n_free);
                 return Ok(self.page2addr(page) as *mut usize as * mut u8);
             }
             _ => Err( AllocErr::Exhausted { request: layout } )
@@ -355,13 +356,14 @@ impl Allocator {
     }
 
     pub fn clear_page(&mut self, pgdir: *const usize) {
-        kprintln!("clear page");
+        kprintln!("clear page {}", (&ALLOCATOR).get_n_free());
         let pte = get_pte(pgdir, self.base_page, false).expect("no pte found.");
         let pages_pa = unsafe{ PTE_ADDR(*pte) };
         // kprintln!("pages_pa: {:x}", pages_pa as usize);
         let npage = self.base_page / PGSIZE;
         let pages = unsafe { std::slice::from_raw_parts_mut(pages_pa as *mut usize as *mut Page, npage) };
         let mut i = 0;
+        let mut cleared = 0;
         for page in pages {
             if page.isUsed() {
                 let va = self.page2addr((self.base_page + i * mem::size_of::<Page>()) as *const Page);
@@ -370,6 +372,7 @@ impl Allocator {
                     Ok(pte) => {
                         kprintln!("pte: {:x} pa: {:x}", unsafe{ *pte }, PTE_ADDR(unsafe{*pte}));
                         if unsafe{ *pte & PTE_V != 0} {
+                            cleared += 1;
                             let pa = PTE_ADDR( unsafe{ *pte })as *mut u8;
                             unsafe { (&ALLOCATOR).dealloc(pa, Layout::from_size_align_unchecked(PGSIZE, PGSIZE)); }
                         }
@@ -379,6 +382,14 @@ impl Allocator {
             }
             i += 1; 
         }
+
+        unsafe { (&ALLOCATOR).dealloc(pages_pa as *mut u8, Layout::from_size_align_unchecked(768 * PGSIZE, PGSIZE)); }
+
+        kprintln!("cleared {} n_free {}", cleared, (&ALLOCATOR).get_n_free());
+    }
+
+    pub fn get_n_free(&self) -> u32 {
+        self.n_free
     }
 
     fn page2addr(&self, page: *const Page) -> usize {
@@ -394,6 +405,7 @@ impl Allocator {
     }
 
     pub fn copy_page(&mut self, src_pgdir: *const usize, dst_pgdir: *const usize) {
+        kprintln!("copy page");
         let pte = get_pte(src_pgdir, self.base_page, false).expect("no pte found.");
         let pte_dst = get_pte(dst_pgdir, self.base_page, false).expect("no pte found.");
         let pages_pa = unsafe{ PTE_ADDR(*pte) };

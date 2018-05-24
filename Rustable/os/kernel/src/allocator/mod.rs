@@ -62,6 +62,9 @@ impl Allocator {
         self.0.lock().as_mut().expect("allocator uninitialized").switch_content(alloc_from, alloc_to);
     }
 
+    pub fn get_n_free(&self) -> u32 {
+        self.0.lock().as_mut().expect("allocator uninitialized").get_n_free()
+    }
     
 
 }
