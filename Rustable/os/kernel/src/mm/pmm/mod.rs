@@ -68,7 +68,7 @@ fn page_init() {
             Some(mem) => {
                 let begin = mem.start as usize;
                 let end = mem.size as usize;
-                kprintln!("mem: {:x} {:x}", begin, end);
+                // kprintln!("mem: {:x} {:x}", begin, end);
                 if maxpa < end && begin < PMEMSIZE {
                     maxpa = end;
                 }
@@ -80,7 +80,7 @@ fn page_init() {
         maxpa = PMEMSIZE;
     }
     let npage = maxpa / PGSIZE;
-    kprintln!("number of pages: {}", npage);
+    // kprintln!("number of pages: {}", npage);
     let pages = align_up(KERNEL_PAGES, PGSIZE) as *mut Page;
 
     // set page reserved
@@ -90,14 +90,14 @@ fn page_init() {
     }
 
     let FREEMEM = (pages as usize) + mem::size_of::<Page>() * npage;
-    kprintln!("FREEMEM: {:x}", FREEMEM);
-    kprintln!("PMEMSIZE: {:x}", PMEMSIZE);
+    // kprintln!("FREEMEM: {:x}", FREEMEM);
+    // kprintln!("PMEMSIZE: {:x}", PMEMSIZE);
     for atag in Atags::get() {
         match atag.mem() {
             Some(mem) => {
                 let mut begin = mem.start as usize;
                 let mut end = mem.size as usize;
-                kprintln!("mem2: {:x} {:x}", begin, end);
+                // kprintln!("mem2: {:x} {:x}", begin, end);
                 if begin < PADDR(FREEMEM) {
                     begin = PADDR(FREEMEM);
                 }
@@ -107,13 +107,13 @@ fn page_init() {
                 // if end > PMEMSIZE {
                 //     end = PMEMSIZE;
                 // }
-                kprintln!("mem3: {:x} {:x}", begin, end);
+                // kprintln!("mem3: {:x} {:x}", begin, end);
                 if begin < end {
                     begin = align_up(begin, PGSIZE);
                     end = align_down(end, PGSIZE);
-                    kprintln!("mem4: {:x} {:x}", begin, end);
+                    // kprintln!("mem4: {:x} {:x}", begin, end);
                     let page_addr = &page[PPN(begin)] as *const Page as *mut usize as usize;
-                    kprintln!("page addr {:x}", page_addr);
+                    // kprintln!("page addr {:x}", page_addr);
                     if begin < end {
                         ALLOCATOR.init_memmap(page_addr, (end - begin) / PGSIZE, begin);
                         // init_memmap(struct Page *base, size_t n) {
@@ -138,10 +138,10 @@ pub fn page_insert(pgdir: *const usize, page: *mut Page, va: usize, perm: usize)
             (unsafe { &mut *page }).page_ref_inc();
             if unsafe{ *pte & PTE_V != 0} {
                 if pa2page(PTE_ADDR(unsafe{*pte})) != page {
-                    kprintln!(1);
+                    // kprintln!(1);
                     page_remove(pte);
                 } else {
-                    kprintln!(2);
+                    // kprintln!(2);
                     (unsafe { &mut *page }).page_ref_dec();
                 }
             }
@@ -162,14 +162,14 @@ pub fn page_remove(pte: *mut usize) {
     let pa = unsafe{ PTE_ADDR(*pte as usize) as *mut usize };
     let page = pa2page(pa as usize);
     // kprintln!("page remove: va: {:x}, pa: {:x}", va, pa as usize );
-    kprintln!("page remove: ref: {}", (unsafe { &mut *page }).reference);
+    // kprintln!("page remove: ref: {}", (unsafe { &mut *page }).reference);
     if (unsafe { &mut *page }).page_ref_dec() <= 0 {
         // free_page(page);
-        kprintln!("page remove: dealloc");
+        // kprintln!("page remove: dealloc");
         dealloc_page(pa as *mut u8);
     }
     unsafe { *pte = 0; }
-    kprintln!("page remove: tlb");
+    // kprintln!("page remove: tlb");
     tlb_invalidate();
 }
 
@@ -194,7 +194,7 @@ pub fn pgdir_alloc_page(pgdir: *const usize, va: usize, perm: usize) -> Result<*
 }
 
 pub fn user_pgdir_alloc_page(allocator: &mut Allocator, pgdir: *const usize, va: usize, perm: usize) -> Result<*mut u8, AllocErr> {
-    kprintln!("user pgidr alloc page: pgidr: {:x}, va: {:x}", pgdir as usize, va);
+    // kprintln!("user pgidr alloc page: pgidr: {:x}, va: {:x}", pgdir as usize, va);
     alloc_page_at(allocator, va, pgdir).expect("alloc virtual page failed");
     
     pgdir_alloc_page(pgdir, va, perm)

@@ -27,7 +27,7 @@ pub static mut FREEMEM: usize = 0;
 #[cfg(not(test))]
 pub extern "C" fn print_sth() {
     spin_sleep_ms(1000);
-    kprintln!("finished vm_init");
+    // kprintln!("finished vm_init");
 }
 
 #[no_mangle]
@@ -35,17 +35,17 @@ pub extern "C" fn print_sth() {
 pub extern "C" fn vm_init() {
     spin_sleep_ms(1000);
 
-    kprintln!("vm init");
+    // kprintln!("vm init");
     
     let binary_end = unsafe { (&_end as *const u8) as u32 };
     
     unsafe { FREEMEM = align_up(binary_end as usize, PGSIZE); }
-    kprintln!("freemem: {:x}", unsafe{FREEMEM});
+    // kprintln!("freemem: {:x}", unsafe{FREEMEM});
 
     // /* Step 1: Allocate a page for page directory(first level page table). */
     let pgdir = boot_alloc(PGSIZE, true).expect("out of memory");
 
-    kprintln!("boot alloced a pgdir");
+    // kprintln!("boot alloced a pgdir");
 
     /* Step 2: Allocate proper size of physical memory for global array `pages`,
      * for physical memory management. Then, map virtual address `UPAGES` to
@@ -57,11 +57,11 @@ pub extern "C" fn vm_init() {
 
     let n = align_up(MAXPA, PGSIZE);
     // let n = 4096 * 1000;
-    kprintln!("n: {:x}", n);
+    // kprintln!("n: {:x}", n);
     boot_map_segment(pgdir, 0, n, 0, ATTRINDX_NORMAL);
-    kprintln!("boot map segment finished 1 ");
+    // kprintln!("boot map segment finished 1 ");
     boot_map_segment(pgdir, n, n, n, ATTRINDX_DEVICE);
-    kprintln!("boot map segment finished 2 ");
+    // kprintln!("boot map segment finished 2 ");
 }
 
 fn boot_alloc(n: usize, clear: bool) -> Result<*mut usize, AllocErr> {

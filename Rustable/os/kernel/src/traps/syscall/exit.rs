@@ -15,7 +15,7 @@ pub fn do_exit(tf: &mut TrapFrame) {
 
     if SCHEDULER.switch(State::Zombie, tf) == None {
         SCHEDULER.clear();
-        kprintln!("enter shell");
+        // kprintln!("enter shell");
         shell::shell("Rainable: ");
     }
 }

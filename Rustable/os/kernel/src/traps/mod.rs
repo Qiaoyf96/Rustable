@@ -1,6 +1,6 @@
 use ALLOCATOR;
 mod irq;
-mod trap_frame;
+pub mod trap_frame;
 pub mod syndrome;
 mod syscall;
 
@@ -53,7 +53,7 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
     // kprintln!("ttbr: {:x}", ttbr0);
     // let elr = tf.elr;
     // kprintln!("elr: {:x}", elr);
-    kprintln!("{:?} {:?} {:b}", info.source, info.kind, esr);
+    // kprintln!("{:?} {:?} {:b}", info.source, info.kind, esr);
     // kprintln!("BACKUP: {:x}", unsafe { BACKUP_ALLOCATOR.base_paddr });
     unsafe { ALLOCATOR.switch_content(&BACKUP_ALLOCATOR, &mut USER_ALLOCATOR); }
     if info.kind == Kind::Synchronous {
@@ -74,13 +74,13 @@ pub extern fn handle_exception(info: Info, esr: u32, tf: &mut TrapFrame) {
             },
             Syndrome::InstructionAbort{kind, level} => {
                 kprintln!("InstructionAbort");
-                do_pgfault(kind, level);
+                // do_pgfault(kind, level, tf);
                 unsafe { ALLOCATOR.switch_content(&USER_ALLOCATOR, &mut BACKUP_ALLOCATOR); }
                 return;
             },
             Syndrome::DataAbort{kind, level} => {
                 kprintln!("DataAbort");
-                do_pgfault(kind, level);
+                do_pgfault(kind, level, tf);
                 unsafe { ALLOCATOR.switch_content(&USER_ALLOCATOR, &mut BACKUP_ALLOCATOR); }
                 return;
             },

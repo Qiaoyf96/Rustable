@@ -121,31 +121,31 @@ impl Process {
 
 impl Process {
     pub fn load_icode(&mut self, binary: *mut u8) -> Result<i32, i32> {
-        kprintln!("================ LOAD_ICODE ================");
+        // kprintln!("================ LOAD_ICODE ================");
         // create a new PDT, and mm->pgdir= kernel virtual addr of PDT
         let pgdir = match alloc_page() {
             Ok(paddr) => { KADDR(paddr as usize) as *const usize},
             Err(_) => { return Err(-1); }
         };
-        kprintln!("pgdir: {:x}", pgdir as usize);
+        // kprintln!("pgdir: {:x}", pgdir as usize);
         self.allocator.init_user(pgdir);
 
-        kprintln!("finish init user page");
+        // kprintln!("finish init user page");
         
-        kprintln!("content:");
+        // kprintln!("content:");
         let bits = unsafe { std::slice::from_raw_parts_mut(binary, 1000) };
-        kprintln!("{}", String::from_utf8_lossy(&bits));
-        kprintln!("end");
+        // kprintln!("{}", String::from_utf8_lossy(&bits));
+        // kprintln!("end");
 
-        kprintln!("binary: {:x}", binary as usize);
+        // kprintln!("binary: {:x}", binary as usize);
         let elf = unsafe { ptr::read( binary as *const Elfhdr ) };
-        unsafe {
-            kprintln!("e_magic:   {:x}", elf.e_magic);
-            kprintln!("e_type:    {:x}", elf.e_type);
-            kprintln!("e_machine: {:x}", elf.e_machine);
-            kprintln!("e_version: {:x}", elf.e_version);
-            kprintln!("elf phoff: {}, elf phnum: {}, elf entry: {}, shoff: {}, shnum: {} ", elf.e_phoff, elf.e_phnum, elf.e_entry, elf.e_shoff, elf.e_shnum);
-        }
+        // unsafe {
+        //     kprintln!("e_magic:   {:x}", elf.e_magic);
+        //     kprintln!("e_type:    {:x}", elf.e_type);
+        //     kprintln!("e_machine: {:x}", elf.e_machine);
+        //     kprintln!("e_version: {:x}", elf.e_version);
+        //     kprintln!("elf phoff: {}, elf phnum: {}, elf entry: {}, shoff: {}, shnum: {} ", elf.e_phoff, elf.e_phnum, elf.e_entry, elf.e_shoff, elf.e_shnum);
+        // }
         
         let phs = unsafe { std::slice::from_raw_parts_mut( binary.add(elf.e_phoff as usize) as *mut Proghdr, elf.e_phnum as usize) };
         if elf.e_magic != ELF_MAGIC {
@@ -155,17 +155,17 @@ impl Process {
         let perm = UXN | PXN | ATTRIB_AP_RW_ALL;
         let mut ph_idx = 0;
         for ph in phs {
-            kprintln!("ph idx: {}", ph_idx);
+            // kprintln!("ph idx: {}", ph_idx);
             ph_idx += 1;
 
             let mut offset = ph.p_va as usize - align_down(ph.p_va as usize, PGSIZE);
             let mut va = align_down(ph.p_va as usize, PGSIZE) as usize;
             let mut bin_off = ph.p_offset as usize;
-            unsafe { kprintln!("va: {:x} p_offset: {} filesz: {} memsz: {} offset: {}", ph.p_va, ph.p_offset, ph.p_filesz, ph.p_memsz, offset); }
+            // unsafe { kprintln!("va: {:x} p_offset: {} filesz: {} memsz: {} offset: {}", ph.p_va, ph.p_offset, ph.p_filesz, ph.p_memsz, offset); }
             // copy TEXT/DATA section of bianry program
-            kprintln!("TEXT/DATA");
+            // kprintln!("TEXT/DATA");
             if offset > 0 {
-                kprintln!("page offset: {}, binary offset: {}", offset, bin_off);
+                // kprintln!("page offset: {}, binary offset: {}", offset, bin_off);
                 let pa = match user_pgdir_alloc_page(&mut self.allocator, pgdir, va, perm) {
                     Ok(pa) => { pa as *mut u8 },
                     Err(_) => { return Err(-3); }
@@ -179,13 +179,13 @@ impl Process {
             let mut end = (ph.p_offset + ph.p_filesz) as usize;
             loop {
                 if bin_off >= end { break; }
-                kprintln!("page offset: {}, binary offset: {} va: {}", offset, bin_off, va);
+                // kprintln!("page offset: {}, binary offset: {} va: {}", offset, bin_off, va);
                 let pa = match user_pgdir_alloc_page(&mut self.allocator, pgdir, va, perm) {
                     Ok(pa) => { pa as *mut u8 },
                     Err(_) => { return Err(-3); }
                 };
                 use allocator::page::Page;
-                kprintln!("check flag: {:x}", unsafe { (*(0x1825000 as *mut Page)).flags });
+                // kprintln!("check flag: {:x}", unsafe { (*(0x1825000 as *mut Page)).flags });
                 let size = if bin_off + PGSIZE >= end {
                     PGSIZE
                 } else {
@@ -197,7 +197,7 @@ impl Process {
                 va += PGSIZE;
             }
             // build BSS section of binary program
-            kprintln!("BSS");
+            // kprintln!("BSS");
             end = (ph.p_offset + ph.p_memsz) as usize;
             loop {
                 if bin_off >= end { break; }
@@ -218,13 +218,13 @@ impl Process {
         user_pgdir_alloc_page(&mut self.allocator, pgdir, USTACKTOP-4*PGSIZE, perm).expect("user alloc page failed");
 
         self.trap_frame.ttbr0 = PADDR(pgdir as usize) as u64;
-        kprintln!("ttbr0: {:x}", pgdir as usize);
+        // kprintln!("ttbr0: {:x}", pgdir as usize);
         self.trap_frame.sp = USTACKTOP as u64;
-        kprintln!("sp:    {:x}", USTACKTOP as usize);
+        // kprintln!("sp:    {:x}", USTACKTOP as usize);
         let pte = get_pte(pgdir as *const usize , 0 as usize, false).expect("get pte");
-        kprintln!("pte    {:x}", unsafe{ *pte } );
+        // kprintln!("pte    {:x}", unsafe{ *pte } );
         
-        kprintln!("============================================");
+        // kprintln!("============================================");
         Ok(0)
     }
 }
