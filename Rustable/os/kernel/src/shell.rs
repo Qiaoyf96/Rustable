@@ -136,13 +136,13 @@ pub fn shell(prefix: &str) -> ! {
     // kprint!("pwd: {}", PWD.get_string());
     let mut i = 0;
     loop {
-        kprintln!("i={}",i);
+        // kprintln!("i={}",i);
         i += 1;
-        kprint!("shell: {}", prefix);
+        kprint!("$ {}", prefix);
         let mut buf_vec = [0u8; 512];
         let mut inputs = StackVec::new(&mut buf_vec);
         let input_line = read_line(&mut inputs);
-        kprintln!("read line {}", input_line);
+        // kprintln!("read line {}", input_line);
         let mut buf = [""; 64];
         match Command::parse(input_line, &mut buf) {
             Ok(ref command) => {
@@ -268,16 +268,16 @@ fn handle_ls(mut args: &[&str], working_dir: &PathBuf) {
     if show_hidden {
         args = &args[1..];
     }
-    kprintln!("1");
+    // kprintln!("1");
     if args.len() > 1 {
         kprintln!("Usage:");
         kprintln!("ls [-a] [directory]");
         kprintln!();
         return;
     }
-    kprintln!("2");
+    // kprintln!("2");
     let mut dir = working_dir.clone();
-    kprintln!("3");
+    // kprintln!("3");
     if !args.is_empty() {
         if args[0] == "." {
             // No-op.
@@ -287,18 +287,18 @@ fn handle_ls(mut args: &[&str], working_dir: &PathBuf) {
             dir.push(args[0]);
         }
     }
-    kprintln!("4");
+    // kprintln!("4");
     // use std::path::Display;
-    kprintln!("{}", dir.as_path().display());
+    // kprintln!("{}", dir.as_path().display());
     let entry_result = FILE_SYSTEM.open(dir.as_path());
-    kprintln!("5");
+    // kprintln!("5");
     if entry_result.is_err() {
         kprintln!("Path not found.");
         return;
     }
-    kprintln!("6");
+    // kprintln!("6");
     let entry = entry_result.unwrap();
-    kprintln!("7");
+    // kprintln!("7");
     if let Some(dir_entry) = entry.into_dir() {
         let mut entries = dir_entry.entries().expect("List dir");
         for item in entries {
@@ -309,11 +309,11 @@ fn handle_ls(mut args: &[&str], working_dir: &PathBuf) {
     } else {
         kprintln!("Not a directory.");
     }
-    kprintln!("8");
+    // kprintln!("8");
 }
 
 fn handle_cat(args: &[&str], working_dir: &PathBuf) {
-    kprintln!("cat");
+    // kprintln!("cat");
     if args.len() != 1 {
         kprintln!("Usage:");
         kprintln!("cat <file>");
@@ -321,13 +321,13 @@ fn handle_cat(args: &[&str], working_dir: &PathBuf) {
         return;
     }
 
-    kprintln!("cat");
+    // kprintln!("cat");
     let mut dir = working_dir.clone();
     dir.push(args[0]);
 
-    kprintln!("cat-b");
+    // kprintln!("cat-b");
     let entry_result = FILE_SYSTEM.open(dir.as_path());
-    kprintln!("cat-a");
+    // kprintln!("cat-a");
     if entry_result.is_err() {
         kprintln!("Path not found.");
         return;
@@ -404,7 +404,7 @@ fn handle_cpy(args: &str, working_dir: &PathBuf) -> usize {
 }
 
 fn handle_exec(args: &[&str], working_dir: &PathBuf) {
-    kprintln!("exec");
+    // kprintln!("exec");
 
     let mut dir = working_dir.clone();
     dir.push(args[0]);
@@ -428,7 +428,7 @@ fn handle_exec(args: &[&str], working_dir: &PathBuf) {
             match file.read(&mut buffer) {
                 Ok(0) => break,
                 Ok(_) => {
-                    kprint!("{}", String::from_utf8_lossy(&buffer));
+                    // kprint!("{}", String::from_utf8_lossy(&buffer));
                     memcpy(pa, &buffer,4096);
                     pa = unsafe{ pa.add(4096) };
 

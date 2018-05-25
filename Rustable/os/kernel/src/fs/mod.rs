@@ -34,7 +34,7 @@ impl FileSystem {
         let vfat = VFat::from(sd).expect("Create VFat");
         kprintln!("vfat initialized");
         *self.0.lock() = Some(vfat);
-        kprintln!("haha");
+        // kprintln!("haha");
     }
 
     fn get_vfat(&self) -> io::Result<Shared<VFat>> {

@@ -55,46 +55,46 @@ use pi::timer::{spin_sleep_ms};
 use process::syscall::sys_sleep;
 use shell::{copy_elf, Pwd};
 
-pub extern "C" fn shell_thread() {
-    // unsafe { console::kprintln!("pc: {:x}", aarch64::get_pc()); }
-    // shell::shell("$ ");
-    // shell::shell("# ");
-    // sys_sleep(1000);
-    unsafe { asm!("svc 2" :::: "volatile"); }
-    unsafe { asm!("svc 2" :::: "volatile"); }
-    unsafe { asm!("svc 2" :::: "volatile"); }
-    unsafe { asm!("svc 2" :::: "volatile"); }
-    unsafe { asm!("svc 2" :::: "volatile"); }
-    // sys_sleep(1000);
-    console::kprintln!("thread1");
+// pub extern "C" fn shell_thread() {
+//     // unsafe { console::kprintln!("pc: {:x}", aarch64::get_pc()); }
+//     // shell::shell("$ ");
+//     // shell::shell("# ");
+//     // sys_sleep(1000);
+//     unsafe { asm!("svc 2" :::: "volatile"); }
+//     unsafe { asm!("svc 2" :::: "volatile"); }
+//     unsafe { asm!("svc 2" :::: "volatile"); }
+//     unsafe { asm!("svc 2" :::: "volatile"); }
+//     unsafe { asm!("svc 2" :::: "volatile"); }
+//     // sys_sleep(1000);
+//     console::kprintln!("thread1");
     
-    let illegal_addr: usize = 8;
-    let illegal_val = unsafe { *(illegal_addr as *const usize) };
-    console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
+//     let illegal_addr: usize = 8;
+//     let illegal_val = unsafe { *(illegal_addr as *const usize) };
+//     console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
 
-    loop {
-        sys_sleep(1000);
-        console::kprintln!("thread1");
-        // aarch64::nop();
-        // console::kprintln!("thread 1");
-        // shell::shell("$ ");
-    }
-}
+//     loop {
+//         sys_sleep(1000);
+//         console::kprintln!("thread1");
+//         // aarch64::nop();
+//         // console::kprintln!("thread 1");
+//         // shell::shell("$ ");
+//     }
+// }
 
-pub extern "C" fn shell_thread_2() {
-    console::kprintln!("thread2");
+// pub extern "C" fn shell_thread_2() {
+//     console::kprintln!("thread2");
 
-    // let illegal_addr: usize = 8;
-    // let illegal_val = unsafe { *(illegal_addr as *const usize) };
-    // console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
+//     // let illegal_addr: usize = 8;
+//     // let illegal_val = unsafe { *(illegal_addr as *const usize) };
+//     // console::kprintln!("try to access illegal addr {:x}: {}", illegal_addr, illegal_val);
 
-    loop {
-        // shell::shell("# ");
-        // aarch64::nop();
-        sys_sleep(1000);
-        console::kprintln!("thread 2");
-    }
-}
+//     loop {
+//         // shell::shell("# ");
+//         // aarch64::nop();
+//         sys_sleep(1000);
+//         console::kprintln!("thread 2");
+//     }
+// }
 
 #[no_mangle]
 #[cfg(not(test))]
@@ -125,19 +125,19 @@ pub extern "C" fn kmain() {
 
     // DEBUG
     // let mut buf = vec![];
-    let buf = vec![1, 2, 3, 4, 5];
-    console::kprintln!("vec test!");
-    // buf.push(1);
-    console::kprintln!("vec test: {} {} {} {} {} {} ", buf.len(), buf[0], buf[1], buf[2], buf[3], buf[4]);
+    // let buf = vec![1, 2, 3, 4, 5];
+    // console::kprintln!("vec test!");
+    // // buf.push(1);
+    // console::kprintln!("vec test: {} {} {} {} {} {} ", buf.len(), buf[0], buf[1], buf[2], buf[3], buf[4]);
 
-    let addr = &buf[0] as *const i32 as *mut usize as usize;
-    console::kprintln!("vec addr: {:x}", addr);
+    // let addr = &buf[0] as *const i32 as *mut usize as usize;
+    // console::kprintln!("vec addr: {:x}", addr);
 
-    let a = [1, 2, 3];
+    // let a = [1, 2, 3];
 
-    assert_eq!(a.iter().find(|&&x| x == 2), Some(&2));
+    // assert_eq!(a.iter().find(|&&x| x == 2), Some(&2));
 
-    assert_eq!(a.iter().find(|&&x| x == 5), None);
+    // assert_eq!(a.iter().find(|&&x| x == 5), None);
 
     FILE_SYSTEM.initialize();
 
@@ -146,9 +146,9 @@ pub extern "C" fn kmain() {
 
     // let illegal_addr: usize = 512*1024*1024 * 2+8;
     // let illegal_val = unsafe { *(illegal_addr as *const usize) };
-    use aarch64::get_ttbr0;
-    let ttbr0 = unsafe { get_ttbr0() };
-    console::kprintln!("ttbr: {:x}", ttbr0);
+    // use aarch64::get_ttbr0;
+    // let ttbr0 = unsafe { get_ttbr0() };
+    // console::kprintln!("ttbr: {:x}", ttbr0);
     
     // copy_elf("USER");
     // copy_elf("USER2");

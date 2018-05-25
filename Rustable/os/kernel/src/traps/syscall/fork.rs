@@ -21,7 +21,7 @@ fn alloc_proc(father: &Process, tf: &mut TrapFrame) -> Process {
     process.trap_frame.ttbr0 = PADDR(pgdir) as u64;
 
     process.allocator.init_user(pgdir as *const usize);
-    kprintln!("alloc_proc");
+    // kprintln!("alloc_proc");
     process.allocator.copy_page(father.trap_frame.ttbr0 as *const usize, process.trap_frame.ttbr0 as *const usize);
 
     process
@@ -31,7 +31,7 @@ pub fn do_fork(tf: &mut TrapFrame) {
     kprintln!("fork");
     let current = SCHEDULER.pop_current();
     tf.x0 = SCHEDULER.last_id() + 1;
-    kprintln!("father return value: {}", tf.x0);
+    kprintln!("forked pid: {}", tf.x0);
     let process = alloc_proc(&current, tf);
     // process.parent = Some(Rc::new(current));
     
@@ -43,6 +43,6 @@ pub fn do_fork(tf: &mut TrapFrame) {
 
     SCHEDULER.push_current_front(current);
     SCHEDULER.add(process);
-    kprintln!("fork finish");
+    // kprintln!("fork finish");
 }
 

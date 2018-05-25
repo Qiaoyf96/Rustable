@@ -19,7 +19,7 @@ use allocator::imp::USER_ALLOCATOR;
 
 /// The `tick` time.
 // FIXME: When you're ready, change this to something more reasonable.
-pub const TICK: u32 = 10 * 1000 * 20;
+pub const TICK: u32 = 10 * 1000 * 10;
 
 /// Process scheduler for the entire machine.
 // #[derive(Debug)]
@@ -110,7 +110,7 @@ impl GlobalScheduler {
         //       eret" :: "r"(tf) :: "volatile");
         // };
 
-        kprintln!("start schedule");
+        // kprintln!("start schedule");
         
         let mut process = Process::new();
         // process.trap_frame.ttbr0 = 0x01000000;
@@ -122,7 +122,7 @@ impl GlobalScheduler {
         let allocator = Box::new(process.allocator);
         self.add(process);
 
-        kprintln!("add process");
+        // kprintln!("add process");
 
         // let mut process2 = Process::new();
         // process2.trap_frame.ttbr0 = 0x01000000;
@@ -137,7 +137,7 @@ impl GlobalScheduler {
 
         ALLOCATOR.switch_content(allocator.deref(), unsafe { &mut BACKUP_ALLOCATOR });
 
-        kprintln!("========================================enter user mode========================================");
+        // kprintln!("========================================enter user mode========================================");
         unsafe {
             asm!("mov sp, $0
               bl context_restore
@@ -153,7 +153,7 @@ impl GlobalScheduler {
         };
 
         // sys_exec(1);
-        kprintln!("no eret");
+        // kprintln!("no eret");
     }
 }
 
@@ -224,7 +224,7 @@ impl Scheduler {
             
             let state = mem::replace(&mut process.state, State::Ready);
             if let State::Wait_Proc(mut id) = state {
-                kprintln!("try wait");
+                // kprintln!("try wait");
                 process.state = State::Wait_Proc(id);
                 let wait_father_id = process.get_id();
                 self.processes.push_back(process);
@@ -285,7 +285,7 @@ impl Scheduler {
 
             self.processes.push_back(process);
         }
-        kprintln!("current: {}", self.current.unwrap()); 
+        // kprintln!("current: {}", self.current.unwrap()); 
         self.current
     }
 
