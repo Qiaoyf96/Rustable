@@ -46,12 +46,14 @@ pub static FILE_SYSTEM: FileSystem = FileSystem::uninitialized();
 
 pub static SCHEDULER: GlobalScheduler = GlobalScheduler::uninitialized();
 
+pub static PWD: Pwd = Pwd::uninitialized();
+
 #[cfg(not(test))]
 use process::GlobalScheduler;
 use pi::timer::{spin_sleep_ms};
 
 use process::syscall::sys_sleep;
-use shell::{copy_elf, PWD};
+use shell::{copy_elf, Pwd};
 
 pub extern "C" fn shell_thread() {
     // unsafe { console::kprintln!("pc: {:x}", aarch64::get_pc()); }
@@ -162,7 +164,7 @@ pub extern "C" fn kmain() {
     
     // console::kprintln!("===schedule===");
     // SCHEDULER.start();
-    PWD = Mutex::new(Some("/"));
+    PWD.initialize();
     shell::shell("Rainable: ");
     // console::kprintln!("========================end===========================");
     // loop {

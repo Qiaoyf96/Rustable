@@ -7,6 +7,8 @@ use FILE_SYSTEM;
 use fat32::traits::{Dir, Entry, FileSystem, Timestamp, Metadata};
 use allocator::alloc_page;
 use SCHEDULER;
+use mutex::Mutex;
+use PWD;
 
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
@@ -15,7 +17,23 @@ enum Error {
     TooManyArgs
 }
 
-pub static PWD: Mutex<Option<String>>;
+
+// pub static PWD: Mutex<Option<String>> = Mutex::new(None);
+pub struct Pwd(Mutex<Option<String>>);
+
+impl Pwd {
+    pub const fn uninitialized() -> Self {
+        Pwd(Mutex::new(None))
+    }
+
+    pub fn initialize(&self) {
+        *self.0.lock() = Some(String::from("/"));
+    }
+
+    pub fn get_string(&self) -> String {
+        self.0.lock().clone().unwrap()
+    }
+}
 
 /// A structure representing a single shell command.
 struct Command<'a> {
@@ -109,11 +127,12 @@ pub fn copy_elf(file: &str) -> usize {
     handle_cpy(file, &mut working_dir)
 }
 
+
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns: it is perpetually in a shell loop.
 pub fn shell(prefix: &str) -> ! {
-    let mut working_dir = PathBuf::from(PWD);
-    kprint!("pwd: {}", PWD);
+    let mut working_dir = PathBuf::from(PWD.get_string());
+    kprint!("pwd: {}", PWD.get_string());
     loop {
         kprint!("{}", prefix);
         let mut buf_vec = [0u8; 512];
@@ -208,7 +227,7 @@ fn handle_cd(args: &[&str], working_dir: &mut PathBuf) {
             kprintln!("Not a directory.");
         }
     }
-    PWD.0.lock().as_mut() = &*(working_dir.to_str());
+    *PWD.0.lock() = Some(working_dir.to_str().unwrap().to_string());
 }
 
 fn recover_pwd() {
