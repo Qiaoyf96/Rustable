@@ -1,12 +1,12 @@
-
-
 use process::Process;
 use pi::timer::current_time;
 use SCHEDULER;
 use traps::trap_frame::TrapFrame;
 use process::State;
+use console::kprintln;
 
-pub fn sleep(ms: u32, tf: &mut TrapFrame) {
+pub fn do_sleep(ms: u32, tf: &mut TrapFrame) {
+    kprintln!("sleep");
     let begin = current_time();
     let time = begin + ms as u64 * 1000;
     let polling_fn = Box::new(move |process: &mut Process| {

@@ -28,7 +28,8 @@ fn alloc_proc(father: &Process, tf: &mut TrapFrame) -> Process {
 }
 
 pub fn do_fork(tf: &mut TrapFrame) {
-    let current = SCHEDULER.pop_current();;
+    kprintln!("fork");
+    let current = SCHEDULER.pop_current();
     tf.x0 = SCHEDULER.last_id() + 1;
     kprintln!("father return value: {}", tf.x0);
     let process = alloc_proc(&current, tf);
@@ -39,7 +40,9 @@ pub fn do_fork(tf: &mut TrapFrame) {
     // current.allocator.copy_page(current.trap_frame.ttbr0 as *const usize, process.trap_frame.ttbr0 as *const usize);
     // process.pid = get_unique_pid();
     
+
     SCHEDULER.push_current_front(current);
     SCHEDULER.add(process);
+    kprintln!("fork finish");
 }
 

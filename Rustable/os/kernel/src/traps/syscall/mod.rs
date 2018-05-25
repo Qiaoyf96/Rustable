@@ -1,12 +1,12 @@
-mod exec;
+mod wait;
 mod sleep;
 mod exit;
 mod fork;
 
 use traps::TrapFrame;
 
-use self::exec::do_exec;
-use self::sleep::sleep;
+use self::wait::do_wait;
+use self::sleep::do_sleep;
 use self::exit::do_exit;
 use self::fork::do_fork;
 use console::kprintln;
@@ -23,10 +23,10 @@ use console::kprintln;
 pub fn handle_syscall(num: u16, tf: &mut TrapFrame) {
     match num {
         1 => {
-            sleep(tf.x0 as u32, tf);
+            do_sleep(tf.x0 as u32, tf);
         },
         2 => {
-            do_exec(tf.x0 as u32, tf);
+            do_wait(tf.x0 as u32, tf);
         },
         3 => {
             kprintln!("user called! {}", tf.x0);

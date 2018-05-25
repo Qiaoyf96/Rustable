@@ -9,6 +9,7 @@ use pi::timer::tick_in;
 use std::ops::Deref;
 use aarch64;
 use shell;
+use std::mem;
 
 use console::kprintln;
 
@@ -18,7 +19,7 @@ use allocator::imp::USER_ALLOCATOR;
 
 /// The `tick` time.
 // FIXME: When you're ready, change this to something more reasonable.
-pub const TICK: u32 = 10 * 1000 * 10;
+pub const TICK: u32 = 10 * 1000 * 20;
 
 /// Process scheduler for the entire machine.
 // #[derive(Debug)]
@@ -218,7 +219,53 @@ impl Scheduler {
         self.processes.push_back(current);
 
         loop {
+            let mut zombie_all = true;
             let mut process = self.processes.pop_front()?;
+            
+            let state = mem::replace(&mut process.state, State::Ready);
+            if let State::Wait_Proc(mut id) = state {
+                kprintln!("try wait");
+                process.state = State::Wait_Proc(id);
+                let wait_father_id = process.get_id();
+                self.processes.push_back(process);
+
+                let mut wait_finish = false;
+
+                loop {
+                    let mut sub_process = self.processes.pop_front()?;
+                    if let State::Zombie = sub_process.state {
+                        if sub_process.get_id() == id as u64 {
+                            wait_finish = true;
+                        }
+                    }
+
+                    if sub_process.get_id() == wait_father_id {
+                        self.processes.push_front(sub_process);
+                        break;
+                    }
+                    self.processes.push_back(sub_process);
+                }
+
+                let mut sub_process = self.processes.pop_front()?;
+                if wait_finish {
+                    kprintln!("finish wait"); 
+                    self.current = Some(sub_process.get_id() as Id);
+                    *tf = *sub_process.trap_frame;
+                    unsafe { USER_ALLOCATOR = sub_process.allocator; }
+                    sub_process.state = State::Running;
+
+                    // Push process back into queue.
+                    self.processes.push_front(sub_process);
+                    break;
+                }
+                else {
+                    self.processes.push_back(sub_process);
+                    continue;
+                }
+            }
+
+            process.state = state;
+
             if process.is_ready() {
                 self.current = Some(process.get_id() as Id);
                 *tf = *process.trap_frame;
@@ -228,7 +275,9 @@ impl Scheduler {
                 // Push process back into queue.
                 self.processes.push_front(process);
                 break;
-            } else if process.get_id() == current_id {
+            } else if process.not_zombie() {
+                zombie_all = false;
+            } else if process.get_id() == current_id && zombie_all {
                 // We cycled the list, wait for an interrupt.
                 return None;
                 // aarch64::wfi();

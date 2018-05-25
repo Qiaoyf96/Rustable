@@ -19,6 +19,8 @@ pub enum State {
     Running,
 
     Zombie,
+    
+    Wait_Proc(u32),
 }
 
 impl fmt::Debug for State {
@@ -28,6 +30,7 @@ impl fmt::Debug for State {
             State::Running => write!(f, "State::Running"),
             State::Zombie => write!(f, "State::Zombie"),
             State::Waiting(_) => write!(f, "State::Waiting"),
+            State::Wait_Proc(_) => write!(f, "State::Waiting Proc"),
         }
     }
 }

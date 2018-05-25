@@ -167,7 +167,7 @@ impl Allocator {
                 // kprintln!("PPN: {:x}", (page as *const Page as *mut usize as usize) - self.base_page);
                 // kprintln!("alloc addr: {:x}", offset + self.base_paddr);
                 // kprintln!("offset: {:x} base_page: {:x} base_paddr: {:x}", offset, self.base_page, self.base_paddr);
-                kprintln!("alloc pa: {:x} base_page {:x} base_paddr {:x} n_free {}", self.page2addr(page), self.base_page, self.base_paddr, self.n_free);
+                // kprintln!("alloc pa: {:x} base_page {:x} base_paddr {:x} n_free {}", self.page2addr(page), self.base_page, self.base_paddr, self.n_free);
                 return Ok(self.page2addr(page) as *mut usize as * mut u8);
             }
             _ => Err( AllocErr::Exhausted { request: layout } )

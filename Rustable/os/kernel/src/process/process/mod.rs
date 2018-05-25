@@ -100,9 +100,20 @@ impl Process {
                     self.state = State::Waiting(event_poll_fn);
                     false
                 }
+            } else if let State::Wait_Proc(id) = state {
+                self.state = State::Wait_Proc(id);
+                false
             } else {
                 unreachable!();
             }
+        }
+    }
+
+    pub fn not_zombie(&mut self) -> bool {
+        if let State::Zombie = self.state {
+            false
+        } else {
+            true
         }
     }
     
