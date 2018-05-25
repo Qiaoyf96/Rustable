@@ -1,8 +1,8 @@
-# File System
+## File System
 
 实现了一个只读的 FAT32 文件系统。
 
-## Layout
+### Layout
 
 ![mbr-fat-diagram](./mbr-fat-diagram.svg)
 
@@ -42,9 +42,9 @@ FAT 重点描述了每个 cluster 在链表中的下一个 cluster 编号。其�
 
 
 
-## 具体实现
+### 具体实现
 
-### BlockDevice trait
+#### BlockDevice trait
 
 为了文件系统可以通用使用于任何物理、虚拟内存设备于是有了 BlockDevice trait。
 
@@ -61,7 +61,7 @@ pub trait BlockDevice: Send {
 }
 ```
 
-### CachedDevice
+#### CachedDevice
 
 `2-fs/fat32/src/vfat/cache.rs`
 
@@ -77,7 +77,7 @@ pub struct CachedDevice {
 }
 ```
 
-### 读取 MBR
+#### 读取 MBR
 
 `2-fs/fat32/src/mbr.rs`
 
@@ -88,18 +88,18 @@ pub struct CachedDevice {
   - `0x80`：表示分区是 bootable (or active) 的；
   - 其他：报错
 
-### 读取 EBPB
+#### 读取 EBPB
 
 `2-fs/fat32/src/vfat/ebpb.rs`
 
 - MBR 中的分区表表项中的 Relative Sector 位指明了该分区的起始扇区，而 EBPB 就是在分区的起始扇区中，所以同样可以使用 `read_all_sector()` 接口来读取此扇区
 - 检查是否以 `0x55AA` 结尾
 
-### 实现文件系统
+#### 实现文件系统
 
 `2-fs/fat32/src/vfat/vfat.rs`
 
-#### 初始化
+##### 初始化
 
 - 读取 MBR
 - 对于 MBR 分区表的每个表项，检查 Partition Type 位，如果是 `0x0B` 或 `0x0C` 则表示此分区为 FAT32 文件系统的分区
@@ -107,7 +107,7 @@ pub struct CachedDevice {
 - 根据 EBPB 设置分区结构体的起始大小和扇区大小（逻辑扇区）
 - 然后初始化文件系统的 CachedDevice、扇区大小、每簇扇区数、FAT 扇区数、FAT 起始扇区、数据起始扇区、根目录所在的簇。
 
-#### 結構
+##### 結構
 
 ```rust
 pub struct VFat {
@@ -121,7 +121,7 @@ pub struct VFat {
 }
 ```
 
-#### 接口
+##### 接口
 
 ```rust
 fn open<P: AsRef<Path>>(self, path: P) -> io::Result<Self::Entry>
@@ -133,7 +133,7 @@ fn remove<P: AsRef<Path>>(self, _path: P, _children: bool) -> io::Result<()> {
 
 
 
-### 實現文件的 Metadata
+#### 實現文件的 Metadata
 
 `2-fs/fat32/src/vfat/metadata.rs`
 
@@ -182,7 +182,7 @@ pub struct Timestamp {
 
 
 
-### 實現 Directory
+#### 實現 Directory
 
 Dir 結構體是抽象保存目錄的數據結構，提供接口來對目錄進行查找。
 
@@ -197,7 +197,7 @@ pub struct Dir {
 
 實現了 `find` 函數，根據給定名字，使用 `entries` 函數來遍歷目錄里的目錄項找出名字相同的 Entry（後面有說明）。其中查找是大小寫不敏感的。
 
-#### 目錄項
+##### 目錄項
 
 和結構體 Dir 不同，目錄項是根據硬盤上實際保存的數據位分布來保存信息的數據結構。
 
@@ -217,7 +217,7 @@ pub union VFatDirEntry {
 }
 ```
 
-##### 正常目錄項
+**正常目錄項**
 
 VFatRegularDirEntry：正常目錄項的數據位分布如下
 
@@ -254,7 +254,7 @@ pub struct VFatRegularDirEntry {
 }
 ```
 
-##### 長文件名目錄項
+**長文件名目錄項**
 
 VFatLfnDirEntry：長文件名目錄項的數據位分布如下
 
@@ -286,7 +286,7 @@ pub struct VFatLfnDirEntry {
 }
 ```
 
-##### 未知目錄項
+**未知目錄項**
 
 VFatUnknownDirEntry
 
@@ -311,7 +311,7 @@ pub struct VFatUnknownDirEntry {
 }
 ```
 
-#### 迭代器 DirIterator
+##### 迭代器 DirIterator
 
 為 Dir 實現了一個 Iterator，用來遍歷目錄里的各個項。
 
@@ -336,7 +336,7 @@ pub struct DirIterator {
 
 
 
-### 實現 File
+#### 實現 File
 
 File 結構體是抽象保存文件的數據結構，提供接口來讀取文件。
 
@@ -355,7 +355,7 @@ pub struct File {
 
 
 
-### 實現 Entry 
+#### 實現 Entry 
 
 Entry 是一個表示文件或目錄的結構體，是文件系統操作所使用的數據結構，其定義如下：
 
@@ -382,6 +382,6 @@ Entry 實現了如下的函數：
 
 
 
-### 文件系統的功能
+#### 文件系統的功能
 
 因為目前只是一個 Read-only 的文件系統，所以只實現了 `open` 函數，用於打開指定路徑。該函數使用了標準庫里的 Path 結構，它提供了 `component` 函數可以返回一個路徑拆分成目錄或文件的名字的數組。先初始化根目錄的 Entry ，遍歷這個數據，使用 Dir 的 `find` 函數來在當前目錄里根據名字來獲取相應的 Entry，並更新當前目錄，一層一層地進入目錄，直到數組結束，即可得到給定的目錄或文件的 Entry 並返回。
