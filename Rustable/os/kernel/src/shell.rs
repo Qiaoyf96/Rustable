@@ -80,8 +80,9 @@ fn read_line<'a>(buf_vec: &'a mut StackVec<'a, u8>) -> &'a str {
             let mut console = CONSOLE.lock();
             console.read_byte()
         };
+        // kprintln!("single byte {}", single_byte);
         match single_byte {
-            LF | CR => break,
+            CR => break,
             BACK | DEL => {
                 match buf_vec.pop() {
                     Some(_) => {
@@ -132,12 +133,16 @@ pub fn copy_elf(file: &str) -> usize {
 /// never returns: it is perpetually in a shell loop.
 pub fn shell(prefix: &str) -> ! {
     let mut working_dir = PathBuf::from(PWD.get_string());
-    kprint!("pwd: {}", PWD.get_string());
+    // kprint!("pwd: {}", PWD.get_string());
+    let mut i = 0;
     loop {
-        kprint!("{}", prefix);
+        kprintln!("i={}",i);
+        i += 1;
+        kprint!("shell: {}", prefix);
         let mut buf_vec = [0u8; 512];
         let mut inputs = StackVec::new(&mut buf_vec);
         let input_line = read_line(&mut inputs);
+        kprintln!("read line {}", input_line);
         let mut buf = [""; 64];
         match Command::parse(input_line, &mut buf) {
             Ok(ref command) => {
