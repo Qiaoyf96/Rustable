@@ -51,7 +51,7 @@ use process::GlobalScheduler;
 use pi::timer::{spin_sleep_ms};
 
 use process::syscall::sys_sleep;
-use shell::copy_elf;
+use shell::{copy_elf, PWD};
 
 pub extern "C" fn shell_thread() {
     // unsafe { console::kprintln!("pc: {:x}", aarch64::get_pc()); }
@@ -148,8 +148,8 @@ pub extern "C" fn kmain() {
     let ttbr0 = unsafe { get_ttbr0() };
     console::kprintln!("ttbr: {:x}", ttbr0);
     
-    copy_elf("USER");
-    copy_elf("USER2");
+    // copy_elf("USER");
+    // copy_elf("USER2");
     // unsafe { asm!("svc 3" :::: "volatile"); }
     // page_remove(ttbr0 as *const usize, 0x15c1000, get_pte(ttbr0 as *const usize , 0x15c1000, false).expect(""));
     // let illegal_addr: usize = 0x14c1008;
@@ -161,8 +161,9 @@ pub extern "C" fn kmain() {
     
     
     // console::kprintln!("===schedule===");
-    SCHEDULER.start();
-    // shell::shell("Rainable: ");
+    // SCHEDULER.start();
+    PWD = Mutex::new(Some("/"));
+    shell::shell("Rainable: ");
     // console::kprintln!("========================end===========================");
     // loop {
     //     // shell::shell("# ");

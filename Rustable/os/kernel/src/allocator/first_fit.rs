@@ -62,7 +62,10 @@ impl Allocator {
 
         let page_pa = match alloc_pages(n_phy_page) {
             Ok(paddr) => { paddr as *const usize},
-            Err(_) => { return; }
+            Err(_) => { 
+                panic!("Exausted!");
+                return; 
+            }
         };
         
         kprintln!("physical page addr: {:x}", page_pa as usize);        

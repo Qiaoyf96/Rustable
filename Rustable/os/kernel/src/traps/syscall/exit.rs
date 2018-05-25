@@ -2,6 +2,7 @@ use SCHEDULER;
 use traps::trap_frame::TrapFrame;
 use process::state::State;
 use console::kprintln;
+use shell;
 
 pub fn do_exit(tf: &mut TrapFrame) {
     kprintln!("exit");
@@ -12,6 +13,9 @@ pub fn do_exit(tf: &mut TrapFrame) {
     current.allocator.clear_page(pgdir as *const usize);
     SCHEDULER.push_current_front(current);
 
-    SCHEDULER.switch(State::Zombie, tf).unwrap();
+    if SCHEDULER.switch(State::Zombie, tf) == None {
+        SCHEDULER.clear();
+        shell::shell("Rainable: ");
+    }
 }
 

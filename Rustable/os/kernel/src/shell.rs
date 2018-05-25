@@ -6,12 +6,16 @@ use pi;
 use FILE_SYSTEM;
 use fat32::traits::{Dir, Entry, FileSystem, Timestamp, Metadata};
 use allocator::alloc_page;
+use SCHEDULER;
+
 /// Error type for `Command` parse failures.
 #[derive(Debug)]
 enum Error {
     Empty,
     TooManyArgs
 }
+
+pub static PWD: Mutex<Option<String>>;
 
 /// A structure representing a single shell command.
 struct Command<'a> {
@@ -108,8 +112,8 @@ pub fn copy_elf(file: &str) -> usize {
 /// Starts a shell using `prefix` as the prefix for each line. This function
 /// never returns: it is perpetually in a shell loop.
 pub fn shell(prefix: &str) -> ! {
-    let mut working_dir = PathBuf::from("/");
-
+    let mut working_dir = PathBuf::from(PWD);
+    kprint!("pwd: {}", PWD);
     loop {
         kprint!("{}", prefix);
         let mut buf_vec = [0u8; 512];
@@ -125,6 +129,7 @@ pub fn shell(prefix: &str) -> ! {
                     "cd" => handle_cd(&command.args[1..], &mut working_dir),
                     "ls" => handle_ls(&command.args[1..], &mut working_dir),
                     "cat" => handle_cat(&command.args[1..], &mut working_dir),
+                    "exec" => handle_exec(&command.args[1..], &mut working_dir),
                     // "cpy" => handle_cpy(&command.args[1..], &mut working_dir),
                     // "v" => handle_v(),
                     "exit" => exit(),
@@ -197,13 +202,17 @@ fn handle_cd(args: &[&str], working_dir: &mut PathBuf) {
             kprintln!("Path not found.");
             return;
         }
-
         if entry.unwrap().as_dir().is_some() {
             working_dir.push(path);
         } else {
             kprintln!("Not a directory.");
         }
     }
+    PWD.0.lock().as_mut() = &*(working_dir.to_str());
+}
+
+fn recover_pwd() {
+
 }
 
 fn print_entry<E: Entry>(entry: &E) {
@@ -368,6 +377,54 @@ fn handle_cpy(args: &str, working_dir: &PathBuf) -> usize {
         kprintln!("Not a file.");
     }
     0
+}
+
+fn handle_exec(args: &[&str], working_dir: &PathBuf) {
+    kprintln!("exec");
+
+    let mut dir = working_dir.clone();
+    dir.push(args[0]);
+
+    let entry_result = FILE_SYSTEM.open(dir.as_path());
+
+    if entry_result.is_err() {
+        kprintln!("Path not found.");
+        return;
+    }
+
+    let mut pa = alloc_page().expect("alloc pages failed");
+    let elf_addr = pa as usize;
+
+    let entry = entry_result.unwrap();
+    if let Some(ref mut file) = entry.into_file() {
+        loop {
+            use std::io::Read;
+
+            let mut buffer = [0u8; 4096];
+            match file.read(&mut buffer) {
+                Ok(0) => break,
+                Ok(_) => {
+                    kprint!("{}", String::from_utf8_lossy(&buffer));
+                    memcpy(pa, &buffer,4096);
+                    pa = unsafe{ pa.add(4096) };
+
+                },
+                Err(e) => kprint!("Failed to read file: {:?}", e)
+
+            }
+        }
+        SCHEDULER.start(elf_addr);
+        // kprintln!("");
+        // unsafe { 
+        //     asm!("mov x0, $2
+        //         svc 2"
+        //         :: "r"(elf_addr)
+        //         : "x0", "x7":"volatile"
+        //     ); 
+        // }
+    } else {
+        kprintln!("Not a file.");
+    }
 }
 
 fn memcpy(dest: *mut u8, buf: &[u8], n: usize) {

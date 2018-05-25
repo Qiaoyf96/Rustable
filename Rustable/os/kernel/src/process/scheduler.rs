@@ -8,6 +8,7 @@ use pi::interrupt::{Interrupt, Controller};
 use pi::timer::tick_in;
 use std::ops::Deref;
 use aarch64;
+use shell;
 
 use console::kprintln;
 
@@ -33,6 +34,10 @@ impl GlobalScheduler {
     /// For more details, see the documentation on `Scheduler::add()`.
     pub fn add(&self, process: Process) -> Option<Id> {
         self.0.lock().as_mut().expect("scheduler uninitialized").add(process)
+    }
+
+    pub fn clear(&self) {
+        *self.0.lock() = None;
     }
 
     /// Performs a context switch using `tf` by setting the state of the current
@@ -67,7 +72,7 @@ impl GlobalScheduler {
     /// Initializes the scheduler and starts executing processes in user space
     /// using timer interrupt based preemptive scheduling. This method should
     /// not return under normal conditions.
-    pub fn start(&self) {
+    pub fn start(&self, addr: usize) {
         *self.0.lock() = Some(Scheduler::new());
         // let mut process = Process::new().unwrap();
         // process.trap_frame.ttbr0 = 0x01000000;
@@ -107,24 +112,24 @@ impl GlobalScheduler {
         kprintln!("start schedule");
         
         let mut process = Process::new();
-        process.trap_frame.ttbr0 = 0x01000000;
+        // process.trap_frame.ttbr0 = 0x01000000;
         // process.trap_frame.sp = process.stack.top().as_u64();
         process.trap_frame.elr = (0x4) as *mut u8 as u64;
         process.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
-        process.load_icode((0x14c7000)  as *mut u8);
+        process.load_icode(addr  as *mut u8);
         let tf = process.trap_frame.clone();
         let allocator = Box::new(process.allocator);
         self.add(process);
 
         kprintln!("add process");
 
-        let mut process2 = Process::new();
-        process2.trap_frame.ttbr0 = 0x01000000;
-        // process.trap_frame.sp = process.stack.top().as_u64();
-        process2.trap_frame.elr = (0x4) as *mut u8 as u64;
-        process2.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
-        process2.load_icode((0x1510000)  as *mut u8);
-        self.add(process2);
+        // let mut process2 = Process::new();
+        // process2.trap_frame.ttbr0 = 0x01000000;
+        // // process.trap_frame.sp = process.stack.top().as_u64();
+        // process2.trap_frame.elr = (0x4) as *mut u8 as u64;
+        // process2.trap_frame.spsr = 0b000; // To EL 0, currently only unmasking IRQ
+        // process2.load_icode((0x1510000)  as *mut u8);
+        // self.add(process2);
         
         Controller::new().enable(Interrupt::Timer1);
         tick_in(TICK);
@@ -225,7 +230,8 @@ impl Scheduler {
                 break;
             } else if process.get_id() == current_id {
                 // We cycled the list, wait for an interrupt.
-                aarch64::wfi();
+                return None;
+                // aarch64::wfi();
             }
 
             self.processes.push_back(process);
