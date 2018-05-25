@@ -15,6 +15,7 @@ RUST_DEBUG_LIB := $(RUST_BUILD_DIR)/debug/lib$(RUST_BINARY).a
 RUST_RELEASE_LIB := $(RUST_BUILD_DIR)/release/lib$(RUST_BINARY).a
 
 RUST_DEPS = Xargo.toml Cargo.toml build.rs $(LD_LAYOUT) src/*
+EXT_DEPS = $(BUILD_DIR)/init.o
 
 BUILD_DIR := build
 KERNEL := $(BUILD_DIR)/$(RUST_BINARY)
@@ -56,7 +57,7 @@ $(BUILD_DIR)/%.o: %.S | $(BUILD_DIR)
 	@echo "+ Building $@ [as $<]"
 	@$(CC) $(CCFLAGS) -c $< -o $@
 
-$(KERNEL).elf: $(RUST_LIB) | $(BUILD_DIR)
+$(KERNEL).elf: $(EXT_DEPS) $(RUST_LIB) | $(BUILD_DIR)
 	@echo "+ Building $@ [ld $^]"
 	@$(CROSS)-ld $(LDFLAGS) -T$(LD_LAYOUT) $^ -o $@
 

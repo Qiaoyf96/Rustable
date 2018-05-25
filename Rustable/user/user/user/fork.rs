@@ -13,7 +13,6 @@ pub extern "C" fn kmain() {
             sys_exit();
         }
         assert!(pid > 0);
-        sys_wait(pid);
     }
     sys_exit();
 }
