@@ -107,7 +107,7 @@ pub struct CachedDevice {
 - 根据 EBPB 设置分区结构体的起始大小和扇区大小（逻辑扇区）
 - 然后初始化文件系统的 CachedDevice、扇区大小、每簇扇区数、FAT 扇区数、FAT 起始扇区、数据起始扇区、根目录所在的簇。
 
-##### 結構
+##### 结构
 
 ```rust
 pub struct VFat {
@@ -133,11 +133,11 @@ fn remove<P: AsRef<Path>>(self, _path: P, _children: bool) -> io::Result<()> {
 
 
 
-#### 實現文件的 Metadata
+#### 实现文件的 Metadata
 
 `2-fs/fat32/src/vfat/metadata.rs`
 
-Cluster 中每個目錄項保存了文件/目錄的元數據（Metadata）結構體：
+Cluster 中每个目录项保存了文件/目录的元数据（Metadata）结构体：
 
 ```rust
 pub struct Metadata {
@@ -148,9 +148,9 @@ pub struct Metadata {
 }
 ```
 
-根據不同的 offset 從硬盤中目錄項中提取出各項訊息，填入文件的 Metadata 的結構體中，其中使用了屬性、時間戳的結構體：
+根据不同的 offset 从硬盘中目录项中提取出各项讯息，填入文件的 Metadata 的结构体中，其中使用了属性、时间戳的结构体：
 
-1. **屬性 Attributes**：該結構體用來保存目錄項中的屬性字節，目錄項中的屬性是 8 bit 所以結構體也只有一個 u8 類型的成員，其中該成員為以下不同值會表示目錄項有不同的屬性。
+1. **属性 Attributes**：该结构体用来保存目录项中的属性字节，目录项中的属性是 8 bit 所以结构体也只有一个 u8 类型的成员，其中该成员为以下不同值会表示目录项有不同的属性。
 
 - READ_ONLY: `0x01`
 
@@ -161,7 +161,7 @@ pub struct Metadata {
 - DIRECTORY: `0x10`
 - ARCHIVE: `0x20`
 
-2. **時間戳 Timestamp**：用以保存創建時間、創建日期、上次修改時間、上次修改日期、上次訪問日期。
+2. **时间戳 Timestamp**：用以保存创建时间、创建日期、上次修改时间、上次修改日期、上次访问日期。
 
 ```rust
 pub struct Timestamp {
@@ -170,7 +170,7 @@ pub struct Timestamp {
 }
 ```
 
-使用了結構體 `Time` 和 `Date` 負責按指定數據位抽取信息：
+使用了结构体 `Time` 和 `Date` 负责按指定数据位抽取信息：
 
 ```
 15........11 10..........5 4..........0
@@ -182,32 +182,32 @@ pub struct Timestamp {
 
 
 
-#### 實現 Directory
+#### 实现 Directory
 
-Dir 結構體是抽象保存目錄的數據結構，提供接口來對目錄進行查找。
+Dir 结构体是抽象保存目录的数据结构，提供接口来对目录进行查找。
 
 ```rust
 pub struct Dir {
-    start_cluster: Cluster,		// 目錄對應的起始 cluster
-    vfat: Shared<VFat> 			// 目錄所在的文件系統
+    start_cluster: Cluster,		// 目录对应的起始 cluster
+    vfat: Shared<VFat> 			// 目录所在的文件系统
 }
 ```
 
-實現了 `entries` 函數，讀取目錄對應的 cluster 鏈的數據，並返回遍歷目錄里的目錄項的 DirIterator（後面有說明）
+实现了 `entries` 函数，读取目录对应的 cluster 链的数据，并返回遍历目录里的目录项的 DirIterator（后面有说明）
 
-實現了 `find` 函數，根據給定名字，使用 `entries` 函數來遍歷目錄里的目錄項找出名字相同的 Entry（後面有說明）。其中查找是大小寫不敏感的。
+实现了 `find` 函数，根据给定名字，使用 `entries` 函数来遍历目录里的目录项找出名字相同的 Entry（后面有说明）。其中查找是大小写不敏感的。
 
-##### 目錄項
+##### 目录项
 
-和結構體 Dir 不同，目錄項是根據硬盤上實際保存的數據位分布來保存信息的數據結構。
+和结构体 Dir 不同，目录项是根据硬盘上实际保存的数据位分布来保存信息的数据结构。
 
-因為 Dir 不同類型，分別是：
+因为 Dir 不同类型，分别是：
 
-- Unknown Directory Entry：未知目錄項，用於判斷目錄是否有效目錄
-- Regular Directory Entry：正常目錄項
-- Long File Name (LFN) Entry：長文件名目錄項
+- Unknown Directory Entry：未知目录项，用于判断目录是否有效目录
+- Regular Directory Entry：正常目录项
+- Long File Name (LFN) Entry：长文件名目录项
 
-使用 `union` 來保存目錄項，因為可以通過 unsafe 來以不同的結構來解析內容。
+使用 `union` 来保存目录项，因为可以通过 unsafe 来以不同的结构来解析内容。
 
 ```rust
 pub union VFatDirEntry {
@@ -217,26 +217,26 @@ pub union VFatDirEntry {
 }
 ```
 
-**正常目錄項**
+**正常目录项**
 
-VFatRegularDirEntry：正常目錄項的數據位分布如下
+VFatRegularDirEntry：正常目录项的数据位分布如下
 
 | Offset (bytes) | Length (bytes) | Meaning                                    |
 | -------------- | -------------- | ------------------------------------------ |
-| 0              | 8              | 文件名（可以以 `0x00` 或 `0x20` 提早結束） |
-| 8              | 3              | 文件擴展名                                 |
-| 11             | 1              | 文件屬性（使用結構體 Attributes）          |
-| 12             | 2              | 沒有使用                                   |
-| 14             | 2              | 創建時間（使用結構體 Timestamp）           |
-| 16             | 2              | 創建日期（使用結構體 Timestamp）           |
-| 18             | 2              | 上次訪問日期（使用結構體 Timestamp）       |
-| 20             | 2              | 數據所在的起始 Cluster 編號的高 16 位      |
-| 22             | 2              | 上次修改時間（使用結構體 Timestamp）       |
-| 24             | 2              | 上次修改日期（使用結構體 Timestamp）       |
-| 26             | 2              | 數據所在的起始 Cluster 編號的高 16 位      |
+| 0              | 8              | 文件名（可以以 `0x00` 或 `0x20` 提早结束） |
+| 8              | 3              | 文件扩展名                                 |
+| 11             | 1              | 文件属性（使用结构体 Attributes）          |
+| 12             | 2              | 没有使用                                   |
+| 14             | 2              | 创建时间（使用结构体 Timestamp）           |
+| 16             | 2              | 创建日期（使用结构体 Timestamp）           |
+| 18             | 2              | 上次访问日期（使用结构体 Timestamp）       |
+| 20             | 2              | 数据所在的起始 Cluster 编号的高 16 位      |
+| 22             | 2              | 上次修改时间（使用结构体 Timestamp）       |
+| 24             | 2              | 上次修改日期（使用结构体 Timestamp）       |
+| 26             | 2              | 数据所在的起始 Cluster 编号的高 16 位      |
 | 28             | 4              | 文件大小（bytes）                          |
 
-因此我們根據以上表格來構造結構體：
+因此我们根据以上表格来构造结构体：
 
 ```rust
 pub struct VFatRegularDirEntry {
@@ -254,24 +254,24 @@ pub struct VFatRegularDirEntry {
 }
 ```
 
-**長文件名目錄項**
+**长文件名目录项**
 
-VFatLfnDirEntry：長文件名目錄項的數據位分布如下
+VFatLfnDirEntry：长文件名目录项的数据位分布如下
 
 | Offset (bytes) | Length (bytes) | Meaning                                     |
 | -------------- | -------------- | ------------------------------------------- |
-| 0              | 1              | 序號                                        |
-| 1              | 10             | 文件名1（可以以 `0x00` 或 `0xFF` 提早結束） |
-| 11             | 1              | 文件屬性（使用結構體 Attributes）           |
-| 12             | 1              | 沒有使用                                    |
-| 13             |                | 校驗和                                      |
-| 14             | 12             | 文件名2（可以以 `0x00` 或 `0xFF` 提早結束） |
-| 26             | 2              | 沒有使用                                    |
-| 28             | 4              | 文件名3（可以以 `0x00` 或 `0xFF` 提早結束） |
+| 0              | 1              | 序号                                        |
+| 1              | 10             | 文件名1（可以以 `0x00` 或 `0xFF` 提早结束） |
+| 11             | 1              | 文件属性（使用结构体 Attributes）           |
+| 12             | 1              | 没有使用                                    |
+| 13             |                | 校验和                                      |
+| 14             | 12             | 文件名2（可以以 `0x00` 或 `0xFF` 提早结束） |
+| 26             | 2              | 没有使用                                    |
+| 28             | 4              | 文件名3（可以以 `0x00` 或 `0xFF` 提早结束） |
 
-長文件名目錄項中的文件名以 Unicode 表示，文件名可以通過把每個長文件名目錄項的三個文件名都連接起來獲得。一串长文件名目录项后面还会跟一个短文件名目录项，这个目录项记录了除文件名以外的这个文件的信息。
+长文件名目录项中的文件名以 Unicode 表示，文件名可以通过把每个长文件名目录项的三个文件名都连接起来获得。一串长文件名目录项后面还会跟一个短文件名目录项，这个目录项记录了除文件名以外的这个文件的信息。
 
-根據以上表格來構造結構體：
+根据以上表格来构造结构体：
 
 ```rust
 pub struct VFatLfnDirEntry {
@@ -286,21 +286,21 @@ pub struct VFatLfnDirEntry {
 }
 ```
 
-**未知目錄項**
+**未知目录项**
 
 VFatUnknownDirEntry
 
-未知目錄項只明確保存了目錄項的第一個字節和保存其屬性的字節，如以判斷此目錄性的類型。
+未知目录项只明确保存了目录项的第一个字节和保存其属性的字节，如以判断此目录性的类型。
 
-目錄項的第一個字節：
+目录项的第一个字节：
 
-- `0x00`：表示目錄的結束
-- `0xE5`：表示沒有使用/已刪除的目錄項
-- 其他情況表示正常目錄項或長文件名目錄項的序號
+- `0x00`：表示目录的结束
+- `0xE5`：表示没有使用/已删除的目录项
+- 其他情况表示正常目录项或长文件名目录项的序号
 
-屬性字節：
+属性字节：
 
-- 如果是 `0x0F` 則表示是長文件名目錄項，其他情況表示是正常目錄項。
+- 如果是 `0x0F` 则表示是长文件名目录项，其他情况表示是正常目录项。
 
 ```rust
 pub struct VFatUnknownDirEntry {
@@ -313,51 +313,51 @@ pub struct VFatUnknownDirEntry {
 
 ##### 迭代器 DirIterator
 
-為 Dir 實現了一個 Iterator，用來遍歷目錄里的各個項。
+为 Dir 实现了一个 Iterator，用来遍历目录里的各个项。
 
 ```rust
 pub struct DirIterator {
     data: Vec<VFatDirEntry>,	// 
-    offset: usize,				// 當前遍歷到的位置
+    offset: usize,				// 当前遍历到的位置
     vfat: Shared<VFat>,
 }
 ```
 
-`data` 是保存該當前目錄的 cluster 鏈所讀出來的數據。
+`data` 是保存该当前目录的 cluster 链所读出来的数据。
 
-實現了 Iterator trait 的 `next` 函數：遍歷時，想要取得當前目錄里的下一個目錄項時，只需要從 `data` 的 `offset` 處開始找，以未知目錄項來解析數據：
+实现了 Iterator trait 的 `next` 函数：遍历时，想要取得当前目录里的下一个目录项时，只需要从 `data` 的 `offset` 处开始找，以未知目录项来解析数据：
 
-- 如果表示目錄結束，則停止；
-- 如果表示沒有使用或已刪除的目錄項，則不做任何處理；
-- 如果是正常目錄項，則返回目錄項，更新 `offset`；
-- 如果是長文件名目錄項，則壓入數組，繼續查看下一個目錄項，並更新 `offset`。直到遇到正常目錄項，就可以把這個數組返回；
+- 如果表示目录结束，则停止；
+- 如果表示没有使用或已删除的目录项，则不做任何处理；
+- 如果是正常目录项，则返回目录项，更新 `offset`；
+- 如果是长文件名目录项，则压入数组，继续查看下一个目录项，并更新 `offset`。直到遇到正常目录项，就可以把这个数组返回；
 
-同時也實現了 `create_entry` 函數，用於在遍歷時把獲得的正常目錄項或長文件名目錄項數組初始化為一個目錄或文件的Entry（Entry 將會在之後展開說明）。
+同时也实现了 `create_entry` 函数，用于在遍历时把获得的正常目录项或长文件名目录项数组初始化为一个目录或文件的Entry（Entry 将会在之后展开说明）。
 
 
 
-#### 實現 File
+#### 实现 File
 
-File 結構體是抽象保存文件的數據結構，提供接口來讀取文件。
+File 结构体是抽象保存文件的数据结构，提供接口来读取文件。
 
 ```rust
 pub struct File {
-    start_cluster: Cluster,			// 文件數據起始 Cluster
-    vfat: Shared<VFat>,				// 文件所在的文件系統
+    start_cluster: Cluster,			// 文件数据起始 Cluster
+    vfat: Shared<VFat>,				// 文件所在的文件系统
     size: u32,						// 文件大小
-    pointer: u64,					// 讀取指針（當前位置）
-    cluster_current: Cluster,		// 當前讀取的 Cluster
-    cluster_current_start: usize,	// 當前讀取的 Cluster 的起始地址   
+    pointer: u64,					// 读取指针（当前位置）
+    cluster_current: Cluster,		// 当前读取的 Cluster
+    cluster_current_start: usize,	// 当前读取的 Cluster 的起始地址   
 }
 ```
 
-為 File 實現 `io::Read`、`io::Write` 和  `io::Seek` 使 File 有讀、寫和在把指針設在指定位置的功能。
+为 File 实现 `io::Read`、`io::Write` 和  `io::Seek` 使 File 有读、写和在把指针设在指定位置的功能。
 
 
 
-#### 實現 Entry 
+#### 实现 Entry 
 
-Entry 是一個表示文件或目錄的結構體，是文件系統操作所使用的數據結構，其定義如下：
+Entry 是一个表示文件或目录的结构体，是文件系统操作所使用的数据结构，其定义如下：
 
 ```rust
 pub struct Entry {
@@ -367,21 +367,21 @@ pub struct Entry {
 }
 ```
 
-其中 EntryData 是一個 enum 類型，表示該 Entry 是文件還是目錄，同時儲存了數據。
+其中 EntryData 是一个 enum 类型，表示该 Entry 是文件还是目录，同时储存了数据。
 
-Entry 實現了如下的函數：
+Entry 实现了如下的函数：
 
-- `new_file`：給定文件名、Metadata 和 File 結構體，創建文件的 Entry
-- `new_dir`：給定目錄名、Metadata 和 Dir 結構體，創建目錄的 Entry
-- `name`：返回文件名或目錄名
+- `new_file`：给定文件名、Metadata 和 File 结构体，创建文件的 Entry
+- `new_dir`：给定目录名、Metadata 和 Dir 结构体，创建目录的 Entry
+- `name`：返回文件名或目录名
 - `metadata`：返回 Metadata 的引用
-- `as_file` ：如果是一個文件的 Entry 則返回其 File 結構體的引用，否則返回 None
-- `as_dir` ：如果是一個目錄的 Entry 則返回其 Dir 結構體的引用，否則返回 None
-- `into_file` ：如果是一個文件的 Entry 則返回其 File 結構體，否則返回 None
-- `into_dir` ：如果是一個目錄的 Entry 則返回其 Dir 結構體，否則返回 None
+- `as_file` ：如果是一个文件的 Entry 则返回其 File 结构体的引用，否则返回 None
+- `as_dir` ：如果是一个目录的 Entry 则返回其 Dir 结构体的引用，否则返回 None
+- `into_file` ：如果是一个文件的 Entry 则返回其 File 结构体，否则返回 None
+- `into_dir` ：如果是一个目录的 Entry 则返回其 Dir 结构体，否则返回 None
 
 
 
-#### 文件系統的功能
+#### 文件系统的功能
 
-因為目前只是一個 Read-only 的文件系統，所以只實現了 `open` 函數，用於打開指定路徑。該函數使用了標準庫里的 Path 結構，它提供了 `component` 函數可以返回一個路徑拆分成目錄或文件的名字的數組。先初始化根目錄的 Entry ，遍歷這個數據，使用 Dir 的 `find` 函數來在當前目錄里根據名字來獲取相應的 Entry，並更新當前目錄，一層一層地進入目錄，直到數組結束，即可得到給定的目錄或文件的 Entry 並返回。
+因为目前只是一个 Read-only 的文件系统，所以只实现了 `open` 函数，用于打开指定路径。该函数使用了标准库里的 Path 结构，它提供了 `component` 函数可以返回一个路径拆分成目录或文件的名字的数组。先初始化根目录的 Entry ，遍历这个数据，使用 Dir 的 `find` 函数来在当前目录里根据名字来获取相应的 Entry，并更新当前目录，一层一层地进入目录，直到数组结束，即可得到给定的目录或文件的 Entry 并返回。
